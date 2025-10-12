@@ -360,6 +360,94 @@
       "pair": null,
       "polarity": null,
       "reference_net": "GND"
+    },
+    {
+      "sequence": 33,
+      "name": "33_U2A5_M_DQS_N<0>",
+      "component": "U2A5",
+      "component_role": "controller",
+      "net": "M_DQS_N<0>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS0",
+      "polarity": "positive",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 34,
+      "name": "34_U1B5_M_DQS_N<0>",
+      "component": "U1B5",
+      "component_role": "dram",
+      "net": "M_DQS_N<0>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS0",
+      "polarity": "positive",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 35,
+      "name": "35_U2A5_M_DQS<0>",
+      "component": "U2A5",
+      "component_role": "controller",
+      "net": "M_DQS<0>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS0",
+      "polarity": "negative",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 36,
+      "name": "36_U1B5_M_DQS<0>",
+      "component": "U1B5",
+      "component_role": "dram",
+      "net": "M_DQS<0>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS0",
+      "polarity": "negative",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 37,
+      "name": "37_U2A5_M_DQS_N<1>",
+      "component": "U2A5",
+      "component_role": "controller",
+      "net": "M_DQS_N<1>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS1",
+      "polarity": "positive",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 38,
+      "name": "38_U1A1_M_DQS_N<1>",
+      "component": "U1A1",
+      "component_role": "dram",
+      "net": "M_DQS_N<1>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS1",
+      "polarity": "positive",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 39,
+      "name": "39_U2A5_M_DQS<1>",
+      "component": "U2A5",
+      "component_role": "controller",
+      "net": "M_DQS<1>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS1",
+      "polarity": "negative",
+      "reference_net": "GND"
+    },
+    {
+      "sequence": 40,
+      "name": "40_U1A1_M_DQS<1>",
+      "component": "U1A1",
+      "component_role": "dram",
+      "net": "M_DQS<1>",
+      "net_type": "differential",
+      "pair": "DP_M_DQS1",
+      "polarity": "negative",
+      "reference_net": "GND"
     }
   ]
 }
