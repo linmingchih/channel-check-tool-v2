@@ -95,9 +95,11 @@ class AEDBCCTCalculator(QMainWindow):
         main_layout.addWidget(self.tabs)
 
         log_group = QGroupBox("Information")
+        log_group.setObjectName("logGroup")
         log_layout = QVBoxLayout(log_group)
         self.log_window = QTextEdit()
         self.log_window.setReadOnly(True)
+        self.log_window.setObjectName("logWindow")
         log_layout.addWidget(self.log_window)
         main_layout.addWidget(log_group)
 
@@ -146,6 +148,23 @@ class AEDBCCTCalculator(QMainWindow):
             }
             QPushButton:pressed {
                 background-color: #d0d0d0;
+            }
+            QGroupBox#logGroup {
+                padding: 12px 2px 2px 2px;
+                margin: 10px 0 0 0;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+            }
+            QGroupBox#logGroup::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+                left: 4px;
+            }
+            QTextEdit#logWindow {
+                border: none;
+                padding: 0;
+                margin: 0;
             }
         """)
         primary_style = "background-color: #007bff; color: white; border: none;"
