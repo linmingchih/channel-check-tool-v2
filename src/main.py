@@ -249,34 +249,46 @@ class AEDBCCTCalculator(QMainWindow):
 
         if not selected_controllers or not selected_drams:
             self.ref_net_combo.addItem("GND")
+            self.update_checked_count()
             return
 
-        all_common_nets = set()
-        selected_components = selected_controllers + selected_drams
-        component_nets = {}
-        for comp in selected_components:
-            component_nets[comp] = {
+        # Get all nets for selected controllers and drams
+        controller_nets = set()
+        for comp in selected_controllers:
+            controller_nets.update(
                 pin[1] for pin in self.pcb_data["component"].get(comp, [])
-            }
+            )
 
-        # Find common nets across all selected controllers and drams
-        if selected_controllers and selected_drams:
-            for controller in selected_controllers:
-                controller_pins = component_nets[controller]
-                for dram in selected_drams:
-                    dram_pins = component_nets[dram]
-                    all_common_nets.update(controller_pins.intersection(dram_pins))
+        dram_nets = set()
+        for comp in selected_drams:
+            dram_nets.update(pin[1] for pin in self.pcb_data["component"].get(comp, []))
 
-        # Calculate net counts and sort
-        net_counts = {
-            net: sum(1 for comp in selected_components if net in component_nets[comp])
-            for net in all_common_nets
-        }
-        sorted_nets = sorted(net_counts.items(), key=lambda item: item[1], reverse=True)
+        # Find the intersection of nets
+        common_nets = controller_nets.intersection(dram_nets)
+        selected_components = selected_controllers + selected_drams
+
+        # Calculate total pin counts for each common net across selected components
+        net_pin_counts = {}
+        for net in common_nets:
+            count = 0
+            for comp_name in selected_components:
+                count += sum(
+                    1
+                    for pin in self.pcb_data["component"].get(comp_name, [])
+                    if pin[1] == net
+                )
+            net_pin_counts[net] = count
+
+        sorted_nets = sorted(
+            net_pin_counts.items(), key=lambda item: item[1], reverse=True
+        )
 
         # Populate ref_net_combo
         for net_name, count in sorted_nets:
             self.ref_net_combo.addItem(net_name)
+
+        if sorted_nets:
+            self.ref_net_combo.setCurrentIndex(0)
 
         diff_pairs_info = self.pcb_data.get("diff", {})
         diff_pair_nets = set()
@@ -284,11 +296,11 @@ class AEDBCCTCalculator(QMainWindow):
             diff_pair_nets.add(pos_net)
             diff_pair_nets.add(neg_net)
 
-        # Populate UI
+        # Populate UI lists
         single_nets = sorted(
             [
                 net
-                for net in all_common_nets
+                for net in common_nets
                 if net not in diff_pair_nets and net.upper() != "GND"
             ]
         )
@@ -299,11 +311,13 @@ class AEDBCCTCalculator(QMainWindow):
             self.single_ended_list.addItem(item)
 
         for pair_name, (pos_net, neg_net) in sorted(diff_pairs_info.items()):
-            if pos_net in all_common_nets and neg_net in all_common_nets:
+            if pos_net in common_nets and neg_net in common_nets:
                 item = QListWidgetItem(pair_name)
                 item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
                 item.setCheckState(Qt.Unchecked)
                 self.differential_pairs_list.addItem(item)
+
+        self.update_checked_count()
 
 
 if __name__ == "__main__":
