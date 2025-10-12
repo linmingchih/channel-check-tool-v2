@@ -49,7 +49,6 @@ class NetListWidget(QListWidget):
         if not selected_items:
             return
 
-        # Determine the target state based on the first selected item
         target_state = (
             Qt.Checked
             if selected_items[0].checkState() == Qt.Unchecked
@@ -67,19 +66,20 @@ class AEDBCCTCalculator(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
         self.pcb_data = None
         self.all_components = []
+        self.config_file = os.path.join(os.path.dirname(__file__), "..", "data", "config.json")
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
 
         top_panel_layout = QHBoxLayout()
-        self.edb_version_combo = QComboBox()
-        self.edb_version_combo.addItems(["2024.1"])
+        self.edb_version_input = QLineEdit()
+        self.edb_version_input.setFixedWidth(60)
         self.open_aedb_button = QPushButton("Open .aedb?")
         self.open_aedb_button.clicked.connect(self.open_aedb)
         self.aedb_path_label = QLabel("No design loaded")
         top_panel_layout.addWidget(QLabel("EDB version:"))
-        top_panel_layout.addWidget(self.edb_version_combo)
+        top_panel_layout.addWidget(self.edb_version_input)
         top_panel_layout.addWidget(self.open_aedb_button)
         top_panel_layout.addWidget(self.aedb_path_label)
         top_panel_layout.addStretch()
@@ -102,12 +102,38 @@ class AEDBCCTCalculator(QMainWindow):
         self.setup_simulation_tab()
         self.setup_cct_tab()
         self.apply_styles()
+        self.load_config()
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage(
             "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
         )
+
+    def closeEvent(self, event):
+        self.save_config()
+        super().closeEvent(event)
+
+    def load_config(self):
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, "r") as f:
+                    config = json.load(f)
+                    self.edb_version_input.setText(config.get("edb_version", "2024.1"))
+            else:
+                self.edb_version_input.setText("2024.1")
+        except (IOError, json.JSONDecodeError) as e:
+            self.log(f"Could not load config file: {e}", "orange")
+            self.edb_version_input.setText("2024.1")
+
+    def save_config(self):
+        try:
+            config = {"edb_version": self.edb_version_input.text()}
+            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            with open(self.config_file, "w") as f:
+                json.dump(config, f, indent=2)
+        except IOError as e:
+            self.log(f"Could not save config file: {e}", "red")
 
     def apply_styles(self):
         self.setStyleSheet("""
@@ -215,7 +241,6 @@ class AEDBCCTCalculator(QMainWindow):
         self.sweeps_table.setColumnCount(4)
         self.sweeps_table.setHorizontalHeaderLabels(["Sweep Type", "Start", "Stop", "Step/Count"])
         self.sweeps_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        # Add default sweeps
         self.add_sweep("linear count", "0", "1kHz", "3")
         self.add_sweep("log scale", "1kHz", "0.1GHz", "10")
         self.add_sweep("linear scale", "0.1GHz", "10GHz", "0.1GHz")
