@@ -352,6 +352,8 @@ class AEDBCCTCalculator(QMainWindow):
         config_panels_layout.addLayout(config_buttons_layout)
         cct_layout.addLayout(config_panels_layout)
 
+        port_group = QGroupBox("Port Information")
+        port_layout = QVBoxLayout(port_group)
         self.port_table = QTableWidget()
         self.port_table.setColumnCount(5)
         self.port_table.setHorizontalHeaderLabels(["", "TX Port", "RX Port", "Type", "Pair"])
@@ -359,7 +361,8 @@ class AEDBCCTCalculator(QMainWindow):
         self.port_table.verticalHeader().setVisible(False)
         self.port_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.port_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        cct_layout.addWidget(self.port_table)
+        port_layout.addWidget(self.port_table)
+        cct_layout.addWidget(port_group)
 
         action_buttons_layout = QHBoxLayout()
         action_buttons_layout.addStretch()
