@@ -153,9 +153,10 @@ class AEDBCCTCalculator(QMainWindow):
         self.differential_pairs_list.itemChanged.connect(self.update_checked_count)
 
         # Apply button
-        apply_button = QPushButton("Apply")
-        apply_button.setEnabled(False)
-        port_setup_layout.addWidget(apply_button, alignment=Qt.AlignRight)
+        self.apply_button = QPushButton("Apply")
+        self.apply_button.setEnabled(False)
+        self.apply_button.clicked.connect(self.apply_settings)
+        port_setup_layout.addWidget(self.apply_button, alignment=Qt.AlignRight)
 
         # Status bar
         self.status_bar = QStatusBar()
@@ -165,20 +166,141 @@ class AEDBCCTCalculator(QMainWindow):
         )
 
     def update_checked_count(self):
-        checked_nets = 0
-        ports = 0
+        checked_single = sum(
+            1
+            for i in range(self.single_ended_list.count())
+            if self.single_ended_list.item(i).checkState() == Qt.Checked
+        )
+        checked_diff = sum(
+            1
+            for i in range(self.differential_pairs_list.count())
+            if self.differential_pairs_list.item(i).checkState() == Qt.Checked
+        )
 
+        checked_nets = checked_single + (checked_diff * 2)
+        ports = (checked_single * 2) + (checked_diff * 4)
+
+        self.checked_nets_label.setText(
+            f"Checked nets: {checked_nets} | Ports: {ports}"
+        )
+        self.apply_button.setEnabled(checked_nets > 0)
+
+    def apply_settings(self):
+        if not self.pcb_data:
+            self.status_bar.showMessage("No PCB data loaded.")
+            return
+
+        aedb_path = self.aedb_path_label.text()
+        if not os.path.isdir(aedb_path):
+            self.status_bar.showMessage("Invalid AEDB path.")
+            return
+
+        output_path = os.path.join(os.path.dirname(aedb_path), "ports.json")
+
+        data = {
+            "aedb_path": aedb_path,
+            "reference_net": self.ref_net_combo.currentText(),
+            "controller_components": [
+                item.text().split(" ")[0]
+                for item in self.controller_components_list.selectedItems()
+            ],
+            "dram_components": [
+                item.text().split(" ")[0]
+                for item in self.dram_components_list.selectedItems()
+            ],
+            "ports": [],
+        }
+
+        sequence = 1
+        diff_pairs_info = self.pcb_data.get("diff", {})
+        
+        # Invert the diff_pairs_info for easier lookup
+        net_to_diff_pair = {}
+        for pair_name, (p_net, n_net) in diff_pairs_info.items():
+            net_to_diff_pair[p_net] = (pair_name, "positive")
+            net_to_diff_pair[n_net] = (pair_name, "negative")
+
+        # Process single-ended nets
         for i in range(self.single_ended_list.count()):
-            if self.single_ended_list.item(i).checkState() == Qt.Checked:
-                checked_nets += 1
-                ports += 2
-
+            item = self.single_ended_list.item(i)
+            if item.checkState() == Qt.Checked:
+                net_name = item.text()
+                for comp in data["controller_components"]:
+                    if any(pin[1] == net_name for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence,
+                            "name": f"{sequence}_{comp}_{net_name}",
+                            "component": comp,
+                            "component_role": "controller",
+                            "net": net_name, "net_type": "single", "pair": None, "polarity": None,
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
+                for comp in data["dram_components"]:
+                    if any(pin[1] == net_name for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence,
+                            "name": f"{sequence}_{comp}_{net_name}",
+                            "component": comp,
+                            "component_role": "dram",
+                            "net": net_name, "net_type": "single", "pair": None, "polarity": None,
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
+        
+        # Process differential pairs
         for i in range(self.differential_pairs_list.count()):
-            if self.differential_pairs_list.item(i).checkState() == Qt.Checked:
-                checked_nets += 2  # A diff pair consists of two nets
-                ports += 4
+            item = self.differential_pairs_list.item(i)
+            if item.checkState() == Qt.Checked:
+                pair_name = item.text()
+                p_net, n_net = diff_pairs_info[pair_name]
+                
+                # Positive net
+                for comp in data["controller_components"]:
+                    if any(pin[1] == p_net for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence, "name": f"{sequence}_{comp}_{p_net}",
+                            "component": comp, "component_role": "controller", "net": p_net,
+                            "net_type": "differential", "pair": pair_name, "polarity": "positive",
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
+                for comp in data["dram_components"]:
+                    if any(pin[1] == p_net for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence, "name": f"{sequence}_{comp}_{p_net}",
+                            "component": comp, "component_role": "dram", "net": p_net,
+                            "net_type": "differential", "pair": pair_name, "polarity": "positive",
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
+                
+                # Negative net
+                for comp in data["controller_components"]:
+                    if any(pin[1] == n_net for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence, "name": f"{sequence}_{comp}_{n_net}",
+                            "component": comp, "component_role": "controller", "net": n_net,
+                            "net_type": "differential", "pair": pair_name, "polarity": "negative",
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
+                for comp in data["dram_components"]:
+                    if any(pin[1] == n_net for pin in self.pcb_data["component"].get(comp, [])):
+                        data["ports"].append({
+                            "sequence": sequence, "name": f"{sequence}_{comp}_{n_net}",
+                            "component": comp, "component_role": "dram", "net": n_net,
+                            "net_type": "differential", "pair": pair_name, "polarity": "negative",
+                            "reference_net": data["reference_net"]
+                        })
+                        sequence += 1
 
-        self.checked_nets_label.setText(f"Checked nets: {checked_nets} | Ports: {ports}")
+        try:
+            with open(output_path, "w") as f:
+                json.dump(data, f, indent=2)
+            self.status_bar.showMessage(f"Successfully saved to {output_path}")
+        except Exception as e:
+            self.status_bar.showMessage(f"Error saving file: {e}")
 
     def open_aedb(self):
         dir_path = QFileDialog.getExistingDirectory(
