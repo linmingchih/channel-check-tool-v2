@@ -298,9 +298,35 @@ class AEDBCCTCalculator(QMainWindow):
         try:
             with open(output_path, "w") as f:
                 json.dump(data, f, indent=2)
-            self.status_bar.showMessage(f"Successfully saved to {output_path}")
+            self.status_bar.showMessage(f"Successfully saved to {output_path}. Now applying to EDB...")
+
+            # Run set_edb.py
+            script_path = os.path.join(os.path.dirname(__file__), "set_edb.py")
+            python_executable = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                ".venv",
+                "Scripts",
+                "python.exe",
+            )
+            command = [python_executable, script_path, output_path]
+            
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            stdout, stderr = process.communicate()
+
+            if process.returncode == 0:
+                new_aedb_path = aedb_path.replace('.aedb', '_applied.aedb')
+                self.status_bar.showMessage(f"Successfully created {new_aedb_path}")
+            else:
+                self.status_bar.showMessage(f"Error running set_edb.py: {stderr.strip()}")
+
         except Exception as e:
-            self.status_bar.showMessage(f"Error saving file: {e}")
+            self.status_bar.showMessage(f"Error during apply: {e}")
 
     def open_aedb(self):
         dir_path = QFileDialog.getExistingDirectory(
