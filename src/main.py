@@ -22,8 +22,15 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QScrollArea,
     QAbstractItemView,
+    QGridLayout,
+    QTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QSpinBox,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QProcess
+from PySide6.QtGui import QColor
 
 
 class NetListWidget(QListWidget):
@@ -57,7 +64,7 @@ class AEDBCCTCalculator(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AEDB CCT Calculator")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1200, 800)  # Adjusted window size
         self.pcb_data = None
         self.all_components = []
 
@@ -72,7 +79,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.edb_version_combo.addItems(["2024.1"])
         self.open_aedb_button = QPushButton("Open .aedb?")
         self.open_aedb_button.clicked.connect(self.open_aedb)
-        self.aedb_path_label = QLabel("D:\\...")
+        self.aedb_path_label = QLabel("No design loaded")
         top_panel_layout.addWidget(QLabel("EDB version:"))
         top_panel_layout.addWidget(self.edb_version_combo)
         top_panel_layout.addWidget(self.open_aedb_button)
@@ -90,6 +97,17 @@ class AEDBCCTCalculator(QMainWindow):
         self.tabs.addTab(self.cct_tab, "CCT")
         main_layout.addWidget(self.tabs)
 
+        self.setup_port_setup_tab()
+        self.setup_cct_tab()
+
+        # Status bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage(
+            "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
+        )
+
+    def setup_port_setup_tab(self):
         # Port Setup Tab Layout
         port_setup_layout = QVBoxLayout(self.port_setup_tab)
 
@@ -150,7 +168,7 @@ class AEDBCCTCalculator(QMainWindow):
         nets_layout.addWidget(single_ended_group)
         nets_layout.addWidget(differential_pairs_group)
         port_setup_layout.addLayout(nets_layout)
-        
+
         # Connect item changed signals
         self.single_ended_list.itemChanged.connect(self.update_checked_count)
         self.differential_pairs_list.itemChanged.connect(self.update_checked_count)
@@ -161,12 +179,288 @@ class AEDBCCTCalculator(QMainWindow):
         self.apply_button.clicked.connect(self.apply_settings)
         port_setup_layout.addWidget(self.apply_button, alignment=Qt.AlignRight)
 
-        # Status bar
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(
-            "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
+    def setup_cct_tab(self):
+        cct_layout = QVBoxLayout(self.cct_tab)
+
+        # File Inputs
+        file_input_layout = QGridLayout()
+        self.touchstone_path_input = QLineEdit()
+        self.touchstone_path_input.textChanged.connect(self.check_paths_and_load_ports)
+        self.port_metadata_path_input = QLineEdit()
+        self.port_metadata_path_input.textChanged.connect(
+            self.check_paths_and_load_ports
         )
+        browse_touchstone_button = QPushButton("Browse")
+        browse_touchstone_button.clicked.connect(self.browse_touchstone)
+        browse_metadata_button = QPushButton("Browse")
+        browse_metadata_button.clicked.connect(self.browse_port_metadata)
+
+        file_input_layout.addWidget(QLabel("Touchstone (.sNp):"), 0, 0)
+        file_input_layout.addWidget(self.touchstone_path_input, 0, 1)
+        file_input_layout.addWidget(browse_touchstone_button, 0, 2)
+        file_input_layout.addWidget(QLabel("Port metadata (.json):"), 1, 0)
+        file_input_layout.addWidget(self.port_metadata_path_input, 1, 1)
+        file_input_layout.addWidget(browse_metadata_button, 1, 2)
+        cct_layout.addLayout(file_input_layout)
+
+        # Configuration Panels
+        config_panels_layout = QHBoxLayout()
+
+        def add_unit_widget(layout, row, label, value, unit):
+            layout.addWidget(QLabel(label), row, 0)
+            widget_layout = QHBoxLayout()
+            line_edit = QLineEdit(value)
+            widget_layout.addWidget(line_edit)
+            widget_layout.addWidget(QLabel(unit))
+            layout.addLayout(widget_layout, row, 1)
+            return line_edit
+
+        # TX Settings
+        tx_group = QGroupBox("TX Settings")
+        tx_layout = QGridLayout(tx_group)
+        self.tx_vhigh = add_unit_widget(tx_layout, 0, "TX Vhigh", "0.800", "V")
+        self.tx_rise_time = add_unit_widget(tx_layout, 1, "TX Rise Time", "30.000", "ps")
+        self.tx_unit_interval = add_unit_widget(tx_layout, 2, "Unit Interval", "133.000", "ps")
+        self.tx_resistance = add_unit_widget(tx_layout, 3, "TX Resistance", "40.000", "ohm")
+        self.tx_capacitance = add_unit_widget(tx_layout, 4, "TX Capacitance", "1.000", "pF")
+        config_panels_layout.addWidget(tx_group)
+
+        # RX Settings
+        rx_group = QGroupBox("RX Settings")
+        rx_layout = QGridLayout(rx_group)
+        self.rx_resistance = add_unit_widget(rx_layout, 0, "RX Resistance", "30.000", "ohm")
+        self.rx_capacitance = add_unit_widget(rx_layout, 1, "RX Capacitance", "1.800", "pF")
+        config_panels_layout.addWidget(rx_group)
+
+        # Transient Settings
+        transient_group = QGroupBox("Transient Settings")
+        transient_layout = QGridLayout(transient_group)
+        self.transient_step = add_unit_widget(transient_layout, 0, "Transient Step", "100.000", "ps")
+        self.transient_stop = add_unit_widget(transient_layout, 1, "Transient Stop", "3.000", "ns")
+        config_panels_layout.addWidget(transient_group)
+
+        # Options
+        options_group = QGroupBox("Options")
+        options_layout = QGridLayout(options_group)
+        self.aedt_version = QLineEdit("2025.2")
+        options_layout.addWidget(QLabel("AEDT Version"), 0, 0)
+        options_layout.addWidget(self.aedt_version, 0, 1)
+        self.threshold = add_unit_widget(options_layout, 1, "Threshold", "-40.0", "dB")
+        config_panels_layout.addWidget(options_group)
+
+        # Config buttons
+        config_buttons_layout = QVBoxLayout()
+        save_config_button = QPushButton("Save Config")
+        load_config_button = QPushButton("Load Config")
+        reset_defaults_button = QPushButton("Reset Defaults")
+        config_buttons_layout.addWidget(save_config_button)
+        config_buttons_layout.addWidget(load_config_button)
+        config_buttons_layout.addWidget(reset_defaults_button)
+        config_buttons_layout.addStretch()
+        config_panels_layout.addLayout(config_buttons_layout)
+
+        cct_layout.addLayout(config_panels_layout)
+
+        # Port Table
+        self.port_table = QTableWidget()
+        self.port_table.setColumnCount(5)
+        self.port_table.setHorizontalHeaderLabels(
+            ["", "TX Port", "RX Port", "Type", "Pair"]
+        )
+        self.port_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.port_table.verticalHeader().setVisible(False)
+        self.port_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.port_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        cct_layout.addWidget(self.port_table)
+
+        # Action Buttons
+        action_buttons_layout = QHBoxLayout()
+        action_buttons_layout.addStretch()
+        self.prerun_button = QPushButton("Pre-run")
+        self.calculate_button = QPushButton("Calculate")
+        self.prerun_button.clicked.connect(self.run_prerun)
+        self.calculate_button.clicked.connect(self.run_calculate)
+        action_buttons_layout.addWidget(self.prerun_button)
+        action_buttons_layout.addWidget(self.calculate_button)
+        cct_layout.addLayout(action_buttons_layout)
+
+        # Log Window
+        self.log_window = QTextEdit()
+        self.log_window.setReadOnly(True)
+        cct_layout.addWidget(self.log_window)
+
+    def browse_touchstone(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Touchstone File", "", "Touchstone files (*.s*p)"
+        )
+        if file_path:
+            self.touchstone_path_input.setText(file_path)
+
+    def browse_port_metadata(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Port Metadata File", "", "JSON files (*.json)"
+        )
+        if file_path:
+            self.port_metadata_path_input.setText(file_path)
+
+    def check_paths_and_load_ports(self):
+        touchstone_path = self.touchstone_path_input.text()
+        metadata_path = self.port_metadata_path_input.text()
+
+        if os.path.exists(touchstone_path) and os.path.exists(metadata_path):
+            self.load_port_data(metadata_path)
+        else:
+            self.port_table.setRowCount(0)
+
+    def load_port_data(self, metadata_path):
+        try:
+            with open(metadata_path, "r") as f:
+                data = json.load(f)
+
+            ports = data.get("ports", [])
+            
+            # Group ports by pair for differential or by net for single
+            tx_ports = {}
+            rx_ports = {}
+
+            for port in ports:
+                role = port.get("component_role")
+                net_type = port.get("net_type")
+                key = port.get("pair") if net_type == "differential" else port.get("net")
+                
+                if role == "controller":
+                    if key not in tx_ports:
+                        tx_ports[key] = []
+                    tx_ports[key].append(port)
+                elif role == "dram":
+                    if key not in rx_ports:
+                        rx_ports[key] = []
+                    rx_ports[key].append(port)
+
+            # Create a list of matched pairs/nets
+            matched_ports = []
+            for key, tx_port_list in tx_ports.items():
+                if key in rx_ports:
+                    rx_port_list = rx_ports[key]
+                    # Simple 1-to-1 matching for now
+                    if tx_port_list and rx_port_list:
+                        matched_ports.append({
+                            "tx": tx_port_list,
+                            "rx": rx_port_list,
+                            "type": tx_port_list[0].get("net_type"),
+                            "pair_name": tx_port_list[0].get("pair")
+                        })
+            
+            self.port_table.setRowCount(len(matched_ports))
+            for i, item in enumerate(matched_ports):
+                tx_names = " / ".join(p['name'] for p in item['tx'])
+                rx_names = " / ".join(p['name'] for p in item['rx'])
+                port_type = item['type'].capitalize()
+                pair_name = item['pair_name'] or f"M_DQ<{i}>" # Placeholder
+
+                self.port_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+                self.port_table.setItem(i, 1, QTableWidgetItem(tx_names))
+                self.port_table.setItem(i, 2, QTableWidgetItem(rx_names))
+                self.port_table.setItem(i, 3, QTableWidgetItem(port_type))
+                self.port_table.setItem(i, 4, QTableWidgetItem(pair_name))
+
+            self.log(f"Loaded {len(ports)} ports from {os.path.basename(metadata_path)}")
+
+        except Exception as e:
+            self.log(f"Error loading port data: {e}", color="red")
+
+    def get_cct_settings(self):
+        return {
+            "tx": {
+                "vhigh": self.tx_vhigh.text() + "V",
+                "t_rise": self.tx_rise_time.text() + "ps",
+                "ui": self.tx_unit_interval.text() + "ps",
+                "res_tx": self.tx_resistance.text() + "ohm",
+                "cap_tx": self.tx_capacitance.text() + "pF",
+            },
+            "rx": {
+                "res_rx": self.rx_resistance.text() + "ohm",
+                "cap_rx": self.rx_capacitance.text() + "pF",
+            },
+            "run": {
+                "tstep": self.transient_step.text() + "ps",
+                "tstop": self.transient_stop.text() + "ns",
+            },
+            "options": {
+                "circuit_version": self.aedt_version.text(),
+                "threshold_db": self.threshold.text(),
+            },
+        }
+
+    def run_cct_process(self, mode):
+        touchstone_path = self.touchstone_path_input.text()
+        metadata_path = self.port_metadata_path_input.text()
+
+        if not os.path.exists(touchstone_path) or not os.path.exists(metadata_path):
+            self.log("Please provide valid paths for Touchstone and Port Metadata files.", color="red")
+            return
+
+        self.log(f"Starting CCT {mode}...")
+        self.prerun_button.setEnabled(False)
+        self.calculate_button.setEnabled(False)
+
+        script_path = os.path.join(os.path.dirname(__file__), "cct_runner.py")
+        python_executable = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe"
+        )
+        workdir = os.path.join(os.path.dirname(metadata_path), "cct_work")
+        
+        settings_str = json.dumps(self.get_cct_settings())
+
+        command = [
+            python_executable,
+            script_path,
+            "--touchstone-path", touchstone_path,
+            "--metadata-path", metadata_path,
+            "--workdir", workdir,
+            "--settings", settings_str,
+            "--mode", mode,
+        ]
+        
+        if mode == 'run':
+            output_path = os.path.join(os.path.dirname(metadata_path), "cct_results.csv")
+            command.extend(["--output-path", output_path])
+
+        self.process = QProcess()
+        self.process.readyReadStandardOutput.connect(self.handle_stdout)
+        self.process.readyReadStandardError.connect(self.handle_stderr)
+        self.process.finished.connect(self.cct_finished)
+        self.process.start(command[0], command[1:])
+
+    def handle_stdout(self):
+        data = self.process.readAllStandardOutput().data().decode().strip()
+        for line in data.splitlines():
+            self.log(line)
+
+    def handle_stderr(self):
+        data = self.process.readAllStandardError().data().decode().strip()
+        for line in data.splitlines():
+            self.log(line, color="red")
+
+    def cct_finished(self):
+        self.log("CCT process finished.")
+        self.prerun_button.setEnabled(True)
+        self.calculate_button.setEnabled(True)
+
+    def run_prerun(self):
+        self.run_cct_process("prerun")
+
+    def run_calculate(self):
+        self.run_cct_process("run")
+
+    def log(self, message, color=None):
+        if color:
+            self.log_window.setTextColor(QColor(color))
+        self.log_window.append(message)
+        self.log_window.setTextColor(QColor("black")) # Reset to default
+        self.log_window.verticalScrollBar().setValue(self.log_window.verticalScrollBar().maximum())
 
     def filter_components(self):
         pattern = self.component_filter_input.text()
