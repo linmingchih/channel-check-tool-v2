@@ -128,7 +128,8 @@ class AEDBCCTCalculator(QMainWindow):
         self.ref_net_combo.addItems(["GND"])
         ref_net_layout.addWidget(self.ref_net_combo)
         ref_net_layout.addStretch()
-        ref_net_layout.addWidget(QLabel("Checked nets: 0 | Ports: 0"))
+        self.checked_nets_label = QLabel("Checked nets: 0 | Ports: 0")
+        ref_net_layout.addWidget(self.checked_nets_label)
         port_setup_layout.addLayout(ref_net_layout)
 
         # Nets panel
@@ -146,6 +147,10 @@ class AEDBCCTCalculator(QMainWindow):
         nets_layout.addWidget(single_ended_group)
         nets_layout.addWidget(differential_pairs_group)
         port_setup_layout.addLayout(nets_layout)
+        
+        # Connect item changed signals
+        self.single_ended_list.itemChanged.connect(self.update_checked_count)
+        self.differential_pairs_list.itemChanged.connect(self.update_checked_count)
 
         # Apply button
         apply_button = QPushButton("Apply")
@@ -158,6 +163,22 @@ class AEDBCCTCalculator(QMainWindow):
         self.status_bar.showMessage(
             "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
         )
+
+    def update_checked_count(self):
+        checked_nets = 0
+        ports = 0
+
+        for i in range(self.single_ended_list.count()):
+            if self.single_ended_list.item(i).checkState() == Qt.Checked:
+                checked_nets += 1
+                ports += 2
+
+        for i in range(self.differential_pairs_list.count()):
+            if self.differential_pairs_list.item(i).checkState() == Qt.Checked:
+                checked_nets += 2  # A diff pair consists of two nets
+                ports += 4
+
+        self.checked_nets_label.setText(f"Checked nets: {checked_nets} | Ports: {ports}")
 
     def open_aedb(self):
         dir_path = QFileDialog.getExistingDirectory(
