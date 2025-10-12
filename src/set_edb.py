@@ -10,7 +10,7 @@ with open(json_path) as f:
     info = json.load(f)
 
 
-edb = Edb(info['aedb_path'], version=edb_version)
+edb = Edb(info['aedb_path'], edbversion=edb_version)
 new_edb_path = info['aedb_path'].replace('.aedb', '_applied.aedb')
 
 

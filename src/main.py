@@ -94,9 +94,12 @@ class AEDBCCTCalculator(QMainWindow):
         self.tabs.addTab(self.cct_tab, "CCT")
         main_layout.addWidget(self.tabs)
 
+        log_group = QGroupBox("Information")
+        log_layout = QVBoxLayout(log_group)
         self.log_window = QTextEdit()
         self.log_window.setReadOnly(True)
-        main_layout.addWidget(self.log_window)
+        log_layout.addWidget(self.log_window)
+        main_layout.addWidget(log_group)
 
         self.setup_port_setup_tab()
         self.setup_simulation_tab()
@@ -104,11 +107,6 @@ class AEDBCCTCalculator(QMainWindow):
         self.apply_styles()
         self.load_config()
 
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(
-            "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
-        )
 
     def closeEvent(self, event):
         self.save_config()
@@ -576,7 +574,8 @@ class AEDBCCTCalculator(QMainWindow):
             self.log(f"Successfully saved to {output_path}. Now applying to EDB...")
             script_path = os.path.join(os.path.dirname(__file__), "set_edb.py")
             python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
-            command = [python_executable, script_path, output_path]
+            edb_version = self.edb_version_input.text()
+            command = [python_executable, script_path, output_path, edb_version]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             stdout, stderr = process.communicate()
             if process.returncode == 0:
@@ -597,15 +596,16 @@ class AEDBCCTCalculator(QMainWindow):
     def run_get_edb(self, aedb_path):
         self.log(f"Opening .aedb: {aedb_path}")
         script_path = os.path.join(os.path.dirname(__file__), "get_edb.py")
-        json_output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "pcb.json")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
-        command = [python_executable, script_path, aedb_path, json_output_path]
+        edb_version = self.edb_version_input.text()
+        command = [python_executable, script_path, aedb_path, edb_version]
         self.log(f"Running command: {' '.join(command)}")
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             stdout, stderr = process.communicate()
+            json_output_path = aedb_path.replace('.aedb', '.json')
             if process.returncode == 0:
-                self.log("Successfully generated pcb.json")
+                self.log(f"Successfully generated {os.path.basename(json_output_path)}")
                 if stdout: self.log(stdout)
                 self.load_pcb_data(json_output_path)
             else:

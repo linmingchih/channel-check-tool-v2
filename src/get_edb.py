@@ -8,7 +8,7 @@ edb_version = sys.argv[2]
 
 # edb_path = 'data/Galileo_G87173_204_applied.aedb'
 json_path = edb_path.replace('.aedb', '.json')
-edb = Edb(edb_path, version=edb_version)
+edb = Edb(edb_path, edbversion=edb_version)
 
 
 #%%
