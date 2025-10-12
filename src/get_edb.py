@@ -1,14 +1,14 @@
 import sys
-
-edb_path = sys.argv[1]
-
 from pyaedt import Edb
 import json
 from collections import defaultdict
 
+edb_path = sys.argv[1]
+edb_version = sys.argv[2]
+
 # edb_path = 'data/Galileo_G87173_204_applied.aedb'
 json_path = edb_path.replace('.aedb', '.json')
-edb = Edb(edb_path, edbversion='2024.1')
+edb = Edb(edb_path, version=edb_version)
 
 
 #%%
@@ -16,7 +16,6 @@ info = {}
 info['component'] = defaultdict(list)
 for component_name, component in edb.components.components.items():
     for pin_name, pin in component.pins.items(): 
-        print(pin.net_name) 
         info['component'][component_name].append((pin_name, pin.net_name)) 
 
 #%%

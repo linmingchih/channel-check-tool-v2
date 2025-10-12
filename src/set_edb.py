@@ -3,13 +3,14 @@ from pyaedt import Edb
 import json
 
 json_path = sys.argv[1]
+edb_version = sys.argv[2]
 # json_path = '../data/ports.json'
 
 with open(json_path) as f:
     info = json.load(f)
 
 
-edb = Edb(info['aedb_path'], edbversion='2024.1')
+edb = Edb(info['aedb_path'], version=edb_version)
 new_edb_path = info['aedb_path'].replace('.aedb', '_applied.aedb')
 
 

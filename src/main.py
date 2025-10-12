@@ -525,11 +525,11 @@ class AEDBCCTCalculator(QMainWindow):
 
     def apply_settings(self):
         if not self.pcb_data:
-            self.status_bar.showMessage("No PCB data loaded.")
+            self.log("No PCB data loaded.", "red")
             return
         aedb_path = self.aedb_path_label.text()
         if not os.path.isdir(aedb_path):
-            self.status_bar.showMessage("Invalid AEDB path.")
+            self.log("Invalid AEDB path.", "red")
             return
         output_path = os.path.join(os.path.dirname(aedb_path), "ports.json")
         data = {
@@ -573,7 +573,7 @@ class AEDBCCTCalculator(QMainWindow):
                         data["ports"].append({"sequence": sequence, "name": f"{sequence}_{comp}_{n_net}", "component": comp, "component_role": "dram", "net": n_net, "net_type": "differential", "pair": pair_name, "polarity": "negative", "reference_net": data["reference_net"]}); sequence += 1
         try:
             with open(output_path, "w") as f: json.dump(data, f, indent=2)
-            self.status_bar.showMessage(f"Successfully saved to {output_path}. Now applying to EDB...")
+            self.log(f"Successfully saved to {output_path}. Now applying to EDB...")
             script_path = os.path.join(os.path.dirname(__file__), "set_edb.py")
             python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
             command = [python_executable, script_path, output_path]
@@ -581,11 +581,12 @@ class AEDBCCTCalculator(QMainWindow):
             stdout, stderr = process.communicate()
             if process.returncode == 0:
                 new_aedb_path = aedb_path.replace('.aedb', '_applied.aedb')
-                self.status_bar.showMessage(f"Successfully created {new_aedb_path}")
+                self.log(f"Successfully created {new_aedb_path}")
+                if stdout: self.log(stdout)
             else:
-                self.status_bar.showMessage(f"Error running set_edb.py: {stderr.strip()}")
+                self.log(f"Error running set_edb.py: {stderr.strip()}", "red")
         except Exception as e:
-            self.status_bar.showMessage(f"Error during apply: {e}")
+            self.log(f"Error during apply: {e}", "red")
 
     def open_aedb(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Select .aedb directory", ".", QFileDialog.ShowDirsOnly)
@@ -594,20 +595,23 @@ class AEDBCCTCalculator(QMainWindow):
             self.run_get_edb(dir_path)
 
     def run_get_edb(self, aedb_path):
+        self.log(f"Opening .aedb: {aedb_path}")
         script_path = os.path.join(os.path.dirname(__file__), "get_edb.py")
         json_output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "pcb.json")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
         command = [python_executable, script_path, aedb_path, json_output_path]
+        self.log(f"Running command: {' '.join(command)}")
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             stdout, stderr = process.communicate()
             if process.returncode == 0:
-                self.status_bar.showMessage("Successfully generated pcb.json")
+                self.log("Successfully generated pcb.json")
+                if stdout: self.log(stdout)
                 self.load_pcb_data(json_output_path)
             else:
-                self.status_bar.showMessage(f"Error running get_edb.py: {stderr.strip()}")
+                self.log(f"Error running get_edb.py: {stderr.strip()}", "red")
         except Exception as e:
-            self.status_bar.showMessage(f"Failed to execute get_edb.py: {e}")
+            self.log(f"Failed to execute get_edb.py: {e}", "red")
 
     def load_pcb_data(self, json_path):
         try:
@@ -618,9 +622,9 @@ class AEDBCCTCalculator(QMainWindow):
                 self.all_components = [(name, len(pins)) for name, pins in self.pcb_data["component"].items()]
                 self.all_components.sort(key=lambda x: x[1], reverse=True)
                 self.filter_components()
-        except FileNotFoundError: self.status_bar.showMessage("pcb.json not found."); self.pcb_data = None
-        except json.JSONDecodeError: self.status_bar.showMessage("Error decoding pcb.json."); self.pcb_data = None
-        except Exception as e: self.status_bar.showMessage(f"Error loading data: {e}"); self.pcb_data = None
+        except FileNotFoundError: self.log("pcb.json not found.", "red"); self.pcb_data = None
+        except json.JSONDecodeError: self.log("Error decoding pcb.json.", "red"); self.pcb_data = None
+        except Exception as e: self.log(f"Error loading data: {e}", "red"); self.pcb_data = None
 
     def update_nets(self):
         if not self.pcb_data or "component" not in self.pcb_data: return
