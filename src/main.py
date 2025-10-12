@@ -150,6 +150,7 @@ class AEDBCCTCalculator(QMainWindow):
         """)
         primary_style = "background-color: #007bff; color: white; border: none;"
         self.calculate_button.setStyleSheet(primary_style)
+        self.calculate_button_original_style = primary_style
         self.apply_button.setStyleSheet(primary_style)
         self.apply_simulation_button.setStyleSheet(primary_style)
 
@@ -308,43 +309,60 @@ class AEDBCCTCalculator(QMainWindow):
             layout.addLayout(widget_layout, row, 1)
             return line_edit
 
+        self.cct_defaults = {
+            "tx_vhigh": "0.800",
+            "tx_rise_time": "30.000",
+            "tx_unit_interval": "133.000",
+            "tx_resistance": "40.000",
+            "tx_capacitance": "1.000",
+            "rx_resistance": "30.000",
+            "rx_capacitance": "1.800",
+            "transient_step": "100.000",
+            "transient_stop": "3.000",
+            "aedt_version": "2025.2",
+            "threshold": "-40.0",
+        }
+
         tx_group = QGroupBox("TX Settings")
         tx_layout = QGridLayout(tx_group)
-        self.tx_vhigh = add_unit_widget(tx_layout, 0, "TX Vhigh", "0.800", "V")
-        self.tx_rise_time = add_unit_widget(tx_layout, 1, "TX Rise Time", "30.000", "ps")
-        self.tx_unit_interval = add_unit_widget(tx_layout, 2, "Unit Interval", "133.000", "ps")
-        self.tx_resistance = add_unit_widget(tx_layout, 3, "TX Resistance", "40.000", "ohm")
-        self.tx_capacitance = add_unit_widget(tx_layout, 4, "TX Capacitance", "1.000", "pF")
+        self.tx_vhigh = add_unit_widget(tx_layout, 0, "TX Vhigh", self.cct_defaults["tx_vhigh"], "V")
+        self.tx_rise_time = add_unit_widget(tx_layout, 1, "TX Rise Time", self.cct_defaults["tx_rise_time"], "ps")
+        self.tx_unit_interval = add_unit_widget(tx_layout, 2, "Unit Interval", self.cct_defaults["tx_unit_interval"], "ps")
+        self.tx_resistance = add_unit_widget(tx_layout, 3, "TX Resistance", self.cct_defaults["tx_resistance"], "ohm")
+        self.tx_capacitance = add_unit_widget(tx_layout, 4, "TX Capacitance", self.cct_defaults["tx_capacitance"], "pF")
         tx_layout.setRowStretch(5, 1)
         config_panels_layout.addWidget(tx_group)
 
         rx_group = QGroupBox("RX Settings")
         rx_layout = QGridLayout(rx_group)
-        self.rx_resistance = add_unit_widget(rx_layout, 0, "RX Resistance", "30.000", "ohm")
-        self.rx_capacitance = add_unit_widget(rx_layout, 1, "RX Capacitance", "1.800", "pF")
+        self.rx_resistance = add_unit_widget(rx_layout, 0, "RX Resistance", self.cct_defaults["rx_resistance"], "ohm")
+        self.rx_capacitance = add_unit_widget(rx_layout, 1, "RX Capacitance", self.cct_defaults["rx_capacitance"], "pF")
         rx_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(rx_group)
 
         transient_group = QGroupBox("Transient Settings")
         transient_layout = QGridLayout(transient_group)
-        self.transient_step = add_unit_widget(transient_layout, 0, "Transient Step", "100.000", "ps")
-        self.transient_stop = add_unit_widget(transient_layout, 1, "Transient Stop", "3.000", "ns")
+        self.transient_step = add_unit_widget(transient_layout, 0, "Transient Step", self.cct_defaults["transient_step"], "ps")
+        self.transient_stop = add_unit_widget(transient_layout, 1, "Transient Stop", self.cct_defaults["transient_stop"], "ns")
         transient_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(transient_group)
 
         options_group = QGroupBox("Options")
         options_layout = QGridLayout(options_group)
-        self.aedt_version = QLineEdit("2025.2")
+        self.aedt_version = QLineEdit(self.cct_defaults["aedt_version"])
         options_layout.addWidget(QLabel("AEDT Version"), 0, 0)
         options_layout.addWidget(self.aedt_version, 0, 1)
-        self.threshold = add_unit_widget(options_layout, 1, "Threshold", "-40.0", "dB")
+        self.threshold = add_unit_widget(options_layout, 1, "Threshold", self.cct_defaults["threshold"], "dB")
         options_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(options_group)
 
         config_buttons_layout = QVBoxLayout()
         self.save_config_button = QPushButton("Save Config")
+        self.save_config_button.clicked.connect(self.save_cct_config)
         self.load_config_button = QPushButton("Load Config")
+        self.load_config_button.clicked.connect(self.load_cct_config)
         self.reset_defaults_button = QPushButton("Reset Defaults")
+        self.reset_defaults_button.clicked.connect(self.reset_cct_defaults)
         config_buttons_layout.addWidget(self.save_config_button)
         config_buttons_layout.addWidget(self.load_config_button)
         config_buttons_layout.addWidget(self.reset_defaults_button)
@@ -439,6 +457,66 @@ class AEDBCCTCalculator(QMainWindow):
         except Exception as e:
             self.log(f"Error loading port data: {e}", color="red")
 
+    def save_cct_config(self):
+        config_data = {
+            "tx_vhigh": self.tx_vhigh.text(),
+            "tx_rise_time": self.tx_rise_time.text(),
+            "tx_unit_interval": self.tx_unit_interval.text(),
+            "tx_resistance": self.tx_resistance.text(),
+            "tx_capacitance": self.tx_capacitance.text(),
+            "rx_resistance": self.rx_resistance.text(),
+            "rx_capacitance": self.rx_capacitance.text(),
+            "transient_step": self.transient_step.text(),
+            "transient_stop": self.transient_stop.text(),
+            "aedt_version": self.aedt_version.text(),
+            "threshold": self.threshold.text(),
+        }
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save CCT Config", "", "JSON files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, "w") as f:
+                    json.dump(config_data, f, indent=2)
+                self.log(f"CCT configuration saved to {file_path}")
+            except Exception as e:
+                self.log(f"Error saving CCT config: {e}", color="red")
+
+    def load_cct_config(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load CCT Config", "", "JSON files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, "r") as f:
+                    config_data = json.load(f)
+                
+                self.tx_vhigh.setText(config_data.get("tx_vhigh", ""))
+                self.tx_rise_time.setText(config_data.get("tx_rise_time", ""))
+                self.tx_unit_interval.setText(config_data.get("tx_unit_interval", ""))
+                self.tx_resistance.setText(config_data.get("tx_resistance", ""))
+                self.tx_capacitance.setText(config_data.get("tx_capacitance", ""))
+                self.rx_resistance.setText(config_data.get("rx_resistance", ""))
+                self.rx_capacitance.setText(config_data.get("rx_capacitance", ""))
+                self.transient_step.setText(config_data.get("transient_step", ""))
+                self.transient_stop.setText(config_data.get("transient_stop", ""))
+                self.aedt_version.setText(config_data.get("aedt_version", ""))
+                self.threshold.setText(config_data.get("threshold", ""))
+                
+                self.log(f"CCT configuration loaded from {file_path}")
+            except Exception as e:
+                self.log(f"Error loading CCT config: {e}", color="red")
+
+    def reset_cct_defaults(self):
+        self.tx_vhigh.setText(self.cct_defaults["tx_vhigh"])
+        self.tx_rise_time.setText(self.cct_defaults["tx_rise_time"])
+        self.tx_unit_interval.setText(self.cct_defaults["tx_unit_interval"])
+        self.tx_resistance.setText(self.cct_defaults["tx_resistance"])
+        self.tx_capacitance.setText(self.cct_defaults["tx_capacitance"])
+        self.rx_resistance.setText(self.cct_defaults["rx_resistance"])
+        self.rx_capacitance.setText(self.cct_defaults["rx_capacitance"])
+        self.transient_step.setText(self.cct_defaults["transient_step"])
+        self.transient_stop.setText(self.cct_defaults["transient_stop"])
+        self.aedt_version.setText(self.cct_defaults["aedt_version"])
+        self.threshold.setText(self.cct_defaults["threshold"])
+        self.log("CCT settings reset to defaults.")
+
     def get_cct_settings(self):
         return {
             "tx": {
@@ -467,6 +545,9 @@ class AEDBCCTCalculator(QMainWindow):
         self.log(f"Starting CCT {mode}...")
         self.prerun_button.setEnabled(False)
         self.calculate_button.setEnabled(False)
+        if mode == 'run':
+            self.calculate_button.setText("Running")
+            self.calculate_button.setStyleSheet("background-color: yellow; color: black;")
 
         script_path = os.path.join(os.path.dirname(__file__), "cct_runner.py")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
@@ -499,6 +580,8 @@ class AEDBCCTCalculator(QMainWindow):
         self.log("CCT process finished.")
         self.prerun_button.setEnabled(True)
         self.calculate_button.setEnabled(True)
+        self.calculate_button.setText("Calculate")
+        self.calculate_button.setStyleSheet(self.calculate_button_original_style)
 
     def run_prerun(self): self.run_cct_process("prerun")
     def run_calculate(self): self.run_cct_process("run")
