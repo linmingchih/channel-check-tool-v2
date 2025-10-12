@@ -99,6 +99,7 @@ class AEDBCCTCalculator(QMainWindow):
 
         self.setup_port_setup_tab()
         self.setup_cct_tab()
+        self.apply_styles()
 
         # Status bar
         self.status_bar = QStatusBar()
@@ -107,6 +108,30 @@ class AEDBCCTCalculator(QMainWindow):
             "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
         )
 
+    def apply_styles(self):
+        self.setStyleSheet("""
+            QPushButton {
+                padding: 5px 10px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                background-color: #f0f0f0;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+            QPushButton:pressed {
+                background-color: #d0d0d0;
+            }
+        """)
+        # Primary action buttons
+        primary_style = "background-color: #007bff; color: white; border: none;"
+        self.calculate_button.setStyleSheet(primary_style)
+        self.apply_button.setStyleSheet(primary_style)
+
+        # Secondary action buttons
+        secondary_style = "background-color: #6c757d; color: white; border: none;"
+        self.prerun_button.setStyleSheet(secondary_style)
+        
     def setup_port_setup_tab(self):
         # Port Setup Tab Layout
         port_setup_layout = QVBoxLayout(self.port_setup_tab)
@@ -190,17 +215,17 @@ class AEDBCCTCalculator(QMainWindow):
         self.port_metadata_path_input.textChanged.connect(
             self.check_paths_and_load_ports
         )
-        browse_touchstone_button = QPushButton("Browse")
-        browse_touchstone_button.clicked.connect(self.browse_touchstone)
-        browse_metadata_button = QPushButton("Browse")
-        browse_metadata_button.clicked.connect(self.browse_port_metadata)
+        self.browse_touchstone_button = QPushButton("Browse")
+        self.browse_touchstone_button.clicked.connect(self.browse_touchstone)
+        self.browse_metadata_button = QPushButton("Browse")
+        self.browse_metadata_button.clicked.connect(self.browse_port_metadata)
 
         file_input_layout.addWidget(QLabel("Touchstone (.sNp):"), 0, 0)
         file_input_layout.addWidget(self.touchstone_path_input, 0, 1)
-        file_input_layout.addWidget(browse_touchstone_button, 0, 2)
+        file_input_layout.addWidget(self.browse_touchstone_button, 0, 2)
         file_input_layout.addWidget(QLabel("Port metadata (.json):"), 1, 0)
         file_input_layout.addWidget(self.port_metadata_path_input, 1, 1)
-        file_input_layout.addWidget(browse_metadata_button, 1, 2)
+        file_input_layout.addWidget(self.browse_metadata_button, 1, 2)
         cct_layout.addLayout(file_input_layout)
 
         # Configuration Panels
@@ -223,6 +248,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.tx_unit_interval = add_unit_widget(tx_layout, 2, "Unit Interval", "133.000", "ps")
         self.tx_resistance = add_unit_widget(tx_layout, 3, "TX Resistance", "40.000", "ohm")
         self.tx_capacitance = add_unit_widget(tx_layout, 4, "TX Capacitance", "1.000", "pF")
+        tx_layout.setRowStretch(5, 1)
         config_panels_layout.addWidget(tx_group)
 
         # RX Settings
@@ -230,6 +256,7 @@ class AEDBCCTCalculator(QMainWindow):
         rx_layout = QGridLayout(rx_group)
         self.rx_resistance = add_unit_widget(rx_layout, 0, "RX Resistance", "30.000", "ohm")
         self.rx_capacitance = add_unit_widget(rx_layout, 1, "RX Capacitance", "1.800", "pF")
+        rx_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(rx_group)
 
         # Transient Settings
@@ -237,6 +264,7 @@ class AEDBCCTCalculator(QMainWindow):
         transient_layout = QGridLayout(transient_group)
         self.transient_step = add_unit_widget(transient_layout, 0, "Transient Step", "100.000", "ps")
         self.transient_stop = add_unit_widget(transient_layout, 1, "Transient Stop", "3.000", "ns")
+        transient_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(transient_group)
 
         # Options
@@ -246,16 +274,17 @@ class AEDBCCTCalculator(QMainWindow):
         options_layout.addWidget(QLabel("AEDT Version"), 0, 0)
         options_layout.addWidget(self.aedt_version, 0, 1)
         self.threshold = add_unit_widget(options_layout, 1, "Threshold", "-40.0", "dB")
+        options_layout.setRowStretch(2, 1)
         config_panels_layout.addWidget(options_group)
 
         # Config buttons
         config_buttons_layout = QVBoxLayout()
-        save_config_button = QPushButton("Save Config")
-        load_config_button = QPushButton("Load Config")
-        reset_defaults_button = QPushButton("Reset Defaults")
-        config_buttons_layout.addWidget(save_config_button)
-        config_buttons_layout.addWidget(load_config_button)
-        config_buttons_layout.addWidget(reset_defaults_button)
+        self.save_config_button = QPushButton("Save Config")
+        self.load_config_button = QPushButton("Load Config")
+        self.reset_defaults_button = QPushButton("Reset Defaults")
+        config_buttons_layout.addWidget(self.save_config_button)
+        config_buttons_layout.addWidget(self.load_config_button)
+        config_buttons_layout.addWidget(self.reset_defaults_button)
         config_buttons_layout.addStretch()
         config_panels_layout.addLayout(config_buttons_layout)
 
