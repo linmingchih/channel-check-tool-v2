@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import re
 import subprocess
 from PySide6.QtWidgets import (
     QApplication,
@@ -58,6 +59,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.setWindowTitle("AEDB CCT Calculator")
         self.setGeometry(100, 100, 800, 600)
         self.pcb_data = None
+        self.all_components = []
 
         # Main widget and layout
         main_widget = QWidget()
@@ -95,6 +97,7 @@ class AEDBCCTCalculator(QMainWindow):
         filter_layout = QHBoxLayout()
         filter_layout.addWidget(QLabel("Component filter (regex):"))
         self.component_filter_input = QLineEdit("^[UJ]")
+        self.component_filter_input.textChanged.connect(self.filter_components)
         filter_layout.addWidget(self.component_filter_input)
         port_setup_layout.addLayout(filter_layout)
 
@@ -164,6 +167,23 @@ class AEDBCCTCalculator(QMainWindow):
         self.status_bar.showMessage(
             "Controllers: 0 | DRAMs: 0 | Shared nets: 0 | Shared differential pairs: 0"
         )
+
+    def filter_components(self):
+        pattern = self.component_filter_input.text()
+        try:
+            regex = re.compile(pattern)
+        except re.error:
+            # Invalid regex, do nothing
+            return
+
+        self.controller_components_list.clear()
+        self.dram_components_list.clear()
+
+        for comp_name, pin_count in self.all_components:
+            if regex.search(comp_name):
+                item_text = f"{comp_name} ({pin_count})"
+                self.controller_components_list.addItem(item_text)
+                self.dram_components_list.addItem(item_text)
 
     def update_checked_count(self):
         checked_single = sum(
@@ -378,16 +398,12 @@ class AEDBCCTCalculator(QMainWindow):
             self.dram_components_list.clear()
 
             if "component" in self.pcb_data:
-                component_list = [
+                self.all_components = [
                     (name, len(pins))
                     for name, pins in self.pcb_data["component"].items()
                 ]
-                component_list.sort(key=lambda x: x[1], reverse=True)
-
-                for comp_name, pin_count in component_list:
-                    item_text = f"{comp_name} ({pin_count})"
-                    self.controller_components_list.addItem(item_text)
-                    self.dram_components_list.addItem(item_text)
+                self.all_components.sort(key=lambda x: x[1], reverse=True)
+                self.filter_components()
 
         except FileNotFoundError:
             self.status_bar.showMessage("pcb.json not found.")
