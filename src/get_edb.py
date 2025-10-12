@@ -28,3 +28,5 @@ for differential_pair_name, differential_pair in edb.differential_pairs.items.it
     
 with open(json_path, 'w') as f:
     json.dump(info, f, indent=3)
+    
+edb.close_edb()
