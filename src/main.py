@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QSpinBox,
+    QRadioButton,
 )
 from PySide6.QtCore import Qt, QProcess
 from PySide6.QtGui import QColor
@@ -243,6 +244,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.enable_cutout_checkbox = QCheckBox("Enable cutout")
         self.expansion_size_input = QLineEdit("0.005000")
         self.signal_nets_label = QLabel("(not set)")
+        self.signal_nets_label.setWordWrap(True)
         self.reference_net_label = QLabel("(not set)")
         cutout_layout.addWidget(self.enable_cutout_checkbox, 0, 0)
         cutout_layout.addWidget(QLabel("Expansion size (m)"), 1, 0)
@@ -253,20 +255,29 @@ class AEDBCCTCalculator(QMainWindow):
         cutout_layout.addWidget(self.reference_net_label, 3, 1)
         simulation_layout.addWidget(cutout_group)
 
+        solver_group = QGroupBox("Solver")
+        solver_layout = QHBoxLayout(solver_group)
+        self.siwave_radio = QRadioButton("SIwave")
+        self.hfss_radio = QRadioButton("HFSS")
+        self.siwave_radio.setChecked(True)
+        solver_layout.addWidget(self.siwave_radio)
+        solver_layout.addWidget(self.hfss_radio)
+        simulation_layout.addWidget(solver_group)
+
         sweeps_group = QGroupBox("Frequency Sweeps")
         sweeps_layout = QVBoxLayout(sweeps_group)
         self.sweeps_table = QTableWidget()
         self.sweeps_table.setColumnCount(4)
         self.sweeps_table.setHorizontalHeaderLabels(["Sweep Type", "Start", "Stop", "Step/Count"])
         self.sweeps_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.add_sweep("linear count", "0", "1kHz", "3")
-        self.add_sweep("log scale", "1kHz", "0.1GHz", "10")
-        self.add_sweep("linear scale", "0.1GHz", "10GHz", "0.1GHz")
+        self.add_sweep(["linear count", "0", "1kHz", "3"])
+        self.add_sweep(["log scale", "1kHz", "0.1GHz", "10"])
+        self.add_sweep(["linear scale", "0.1GHz", "10GHz", "0.1GHz"])
         sweeps_layout.addWidget(self.sweeps_table)
         
         sweep_buttons_layout = QHBoxLayout()
         add_sweep_button = QPushButton("Add Sweep")
-        add_sweep_button.clicked.connect(lambda: self.add_sweep())
+        add_sweep_button.clicked.connect(self.add_sweep)
         remove_sweep_button = QPushButton("Remove Selected")
         remove_sweep_button.clicked.connect(self.remove_selected_sweep)
         sweep_buttons_layout.addWidget(add_sweep_button)
@@ -276,26 +287,39 @@ class AEDBCCTCalculator(QMainWindow):
         simulation_layout.addWidget(sweeps_group)
 
         self.apply_simulation_button = QPushButton("Apply Simulation")
+        self.apply_simulation_button.clicked.connect(self.apply_simulation_settings)
         simulation_layout.addWidget(self.apply_simulation_button, alignment=Qt.AlignRight)
         simulation_layout.addStretch()
 
-    def add_sweep(self, type="", start="", stop="", step=""):
+    def add_sweep(self, sweep_data=None):
+        if sweep_data is None:
+            sweep_data = ["linear count", "", "", ""]
         row_position = self.sweeps_table.rowCount()
         self.sweeps_table.insertRow(row_position)
-        
+
         sweep_type_combo = QComboBox()
         sweep_type_combo.addItems(["linear count", "log scale", "linear scale"])
-        if type:
-            sweep_type_combo.setCurrentText(type)
+        sweep_type_combo.setCurrentText(sweep_data[0])
 
         self.sweeps_table.setCellWidget(row_position, 0, sweep_type_combo)
-        self.sweeps_table.setItem(row_position, 1, QTableWidgetItem(start))
-        self.sweeps_table.setItem(row_position, 2, QTableWidgetItem(stop))
-        self.sweeps_table.setItem(row_position, 3, QTableWidgetItem(step))
+        self.sweeps_table.setItem(row_position, 1, QTableWidgetItem(str(sweep_data[1])))
+        self.sweeps_table.setItem(row_position, 2, QTableWidgetItem(str(sweep_data[2])))
+        self.sweeps_table.setItem(row_position, 3, QTableWidgetItem(str(sweep_data[3])))
 
     def remove_selected_sweep(self):
-        selected_rows = self.sweeps_table.selectionModel().selectedRows()
-        for row in sorted([r.row() for r in selected_rows], reverse=True):
+        # Get all selected ranges
+        selected_ranges = self.sweeps_table.selectedRanges()
+        if not selected_ranges:
+            return
+
+        # Collect all unique rows to be removed from all selected ranges
+        rows_to_remove = set()
+        for s_range in selected_ranges:
+            for row in range(s_range.topRow(), s_range.bottomRow() + 1):
+                rows_to_remove.add(row)
+
+        # Sort rows in descending order to avoid index shifting issues
+        for row in sorted(list(rows_to_remove), reverse=True):
             self.sweeps_table.removeRow(row)
 
     def setup_cct_tab(self):
@@ -605,6 +629,56 @@ class AEDBCCTCalculator(QMainWindow):
     def run_prerun(self): self.run_cct_process("prerun")
     def run_calculate(self): self.run_cct_process("run")
 
+    def apply_simulation_settings(self):
+        aedb_path = self.aedb_path_label.text()
+        if not os.path.isdir(aedb_path):
+            self.log("Please open an .aedb project first.", "red")
+            return
+
+        output_dir = os.path.dirname(aedb_path)
+        file_path = os.path.join(output_dir, "simulation.json")
+
+        sweeps = []
+        for row in range(self.sweeps_table.rowCount()):
+            sweep_type = self.sweeps_table.cellWidget(row, 0).currentText()
+            start = self.sweeps_table.item(row, 1).text()
+            stop = self.sweeps_table.item(row, 2).text()
+            step = self.sweeps_table.item(row, 3).text()
+            sweeps.append([sweep_type, start, stop, step])
+
+        settings = {
+            "aedb_path": aedb_path,
+            "edb_version": self.edb_version_input.text(),
+            "cutout": {
+                "enabled": self.enable_cutout_checkbox.isChecked(),
+                "expansion_size": self.expansion_size_input.text(),
+                "signal_nets": self.signal_nets_label.text().split(", "),
+                "reference_net": self.reference_net_label.text(),
+            },
+            "solver": "SIwave" if self.siwave_radio.isChecked() else "HFSS",
+            "frequency_sweeps": sweeps,
+        }
+
+        try:
+            with open(file_path, "w") as f:
+                json.dump(settings, f, indent=2)
+            self.log(f"Simulation settings saved to {file_path}")
+
+            self.log("Applying simulation settings to EDB...")
+            script_path = os.path.join(os.path.dirname(__file__), "set_sim.py")
+            python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
+            command = [python_executable, script_path, file_path]
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            stdout, stderr = process.communicate()
+
+            if process.returncode == 0:
+                self.log("Successfully applied simulation settings.")
+                if stdout: self.log(stdout)
+            else:
+                self.log(f"Error running set_sim.py: {stderr.strip()}", "red")
+        except Exception as e:
+            self.log(f"Error applying simulation settings: {e}", color="red")
+
     def log(self, message, color=None):
         if color: self.log_window.setTextColor(QColor(color))
         self.log_window.append(message)
@@ -651,10 +725,12 @@ class AEDBCCTCalculator(QMainWindow):
         net_to_diff_pair = {p_net: (pair_name, "positive") for pair_name, (p_net, n_net) in diff_pairs_info.items()}
         net_to_diff_pair.update({n_net: (pair_name, "negative") for pair_name, (p_net, n_net) in diff_pairs_info.items()})
 
+        signal_nets = []
         for i in range(self.single_ended_list.count()):
             item = self.single_ended_list.item(i)
             if item.checkState() == Qt.Checked:
                 net_name = item.text()
+                signal_nets.append(net_name)
                 for comp in data["controller_components"]:
                     if any(pin[1] == net_name for pin in self.pcb_data["component"].get(comp, [])):
                         data["ports"].append({"sequence": sequence, "name": f"{sequence}_{comp}_{net_name}", "component": comp, "component_role": "controller", "net": net_name, "net_type": "single", "pair": None, "polarity": None, "reference_net": data["reference_net"]}); sequence += 1
@@ -667,6 +743,7 @@ class AEDBCCTCalculator(QMainWindow):
             if item.checkState() == Qt.Checked:
                 pair_name = item.text()
                 p_net, n_net = diff_pairs_info[pair_name]
+                signal_nets.extend([p_net, n_net])
                 for comp in data["controller_components"]:
                     if any(pin[1] == p_net for pin in self.pcb_data["component"].get(comp, [])):
                         data["ports"].append({"sequence": sequence, "name": f"{sequence}_{comp}_{p_net}", "component": comp, "component_role": "controller", "net": p_net, "net_type": "differential", "pair": pair_name, "polarity": "positive", "reference_net": data["reference_net"]}); sequence += 1
@@ -679,6 +756,10 @@ class AEDBCCTCalculator(QMainWindow):
                 for comp in data["dram_components"]:
                     if any(pin[1] == n_net for pin in self.pcb_data["component"].get(comp, [])):
                         data["ports"].append({"sequence": sequence, "name": f"{sequence}_{comp}_{n_net}", "component": comp, "component_role": "dram", "net": n_net, "net_type": "differential", "pair": pair_name, "polarity": "negative", "reference_net": data["reference_net"]}); sequence += 1
+        
+        self.signal_nets_label.setText(", ".join(sorted(signal_nets)))
+        self.reference_net_label.setText(data["reference_net"])
+
         try:
             with open(output_path, "w") as f: json.dump(data, f, indent=2)
             self.log(f"Successfully saved to {output_path}. Now applying to EDB...")

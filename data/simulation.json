@@ -1,0 +1,52 @@
+{
+  "aedb_path": "D:/OneDrive - ANSYS, Inc/a-client-repositories/quanta-cct-circuit-202508/channel check tool 2.0/data/pcb.aedb",
+  "edb_version": "2024.1",
+  "cutout": {
+    "enabled": true,
+    "expansion_size": "0.005000",
+    "signal_nets": [
+      "M_DQ<0>",
+      "M_DQ<10>",
+      "M_DQ<11>",
+      "M_DQ<12>",
+      "M_DQ<13>",
+      "M_DQ<14>",
+      "M_DQ<15>",
+      "M_DQ<1>",
+      "M_DQ<2>",
+      "M_DQ<3>",
+      "M_DQ<4>",
+      "M_DQ<5>",
+      "M_DQ<6>",
+      "M_DQ<7>",
+      "M_DQ<8>",
+      "M_DQ<9>",
+      "M_DQS<0>",
+      "M_DQS<1>",
+      "M_DQS_N<0>",
+      "M_DQS_N<1>"
+    ],
+    "reference_net": "GND"
+  },
+  "solver": "HFSS",
+  "frequency_sweeps": [
+    [
+      "linear count",
+      "0",
+      "2kHz",
+      "1"
+    ],
+    [
+      "log scale",
+      "1kHz",
+      "0.1GHz",
+      "20"
+    ],
+    [
+      "linear scale",
+      "0.1GHz",
+      "20GHz",
+      "0.1GHz"
+    ]
+  ]
+}
