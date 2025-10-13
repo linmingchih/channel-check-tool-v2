@@ -6,8 +6,7 @@
   ],
   "dram_components": [
     "U1B5",
-    "U1A1",
-    "U8"
+    "U1A1"
   ],
   "ports": [
     {

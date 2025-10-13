@@ -2,7 +2,7 @@
   "aedb_path": "D:/OneDrive - ANSYS, Inc/a-client-repositories/quanta-cct-circuit-202508/channel check tool 2.0/data/pcb.aedb",
   "edb_version": "2024.1",
   "cutout": {
-    "enabled": true,
+    "enabled": false,
     "expansion_size": "0.005000",
     "signal_nets": [
       "M_DQ<0>",
@@ -28,24 +28,24 @@
     ],
     "reference_net": "GND"
   },
-  "solver": "HFSS",
+  "solver": "SIwave",
   "frequency_sweeps": [
     [
       "linear count",
       "0",
-      "2kHz",
-      "1"
+      "1kHz",
+      "3"
     ],
     [
       "log scale",
       "1kHz",
       "0.1GHz",
-      "20"
+      "10"
     ],
     [
       "linear scale",
       "0.1GHz",
-      "20GHz",
+      "10GHz",
       "0.1GHz"
     ]
   ]

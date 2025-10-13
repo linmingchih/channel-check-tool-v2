@@ -337,7 +337,7 @@ class Design:
         for v in self.circuit.post.available_report_quantities():
             data = self.circuit.post.get_solution_data(v, domain='Time')
             x = [1e3 * i for i in data.primary_sweep_values]
-            y = [1e-3 * i for i in data.data_real()]
+            y = [1e-3 * i for i in data.get_expression_data()]
             m = re.search(r'net_(\d+)', v)
             if m:
                 number = int(m.group(1))

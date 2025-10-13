@@ -9,7 +9,7 @@ with open(json_path) as f:
 
 from pyedb import Edb
 edb_path = info['aedb_path'].replace('.aedb', '_applied.aedb')
-edb = Edb(edb_path, edbversion=info['edb_version'])
+edb = Edb(edb_path, version=info['edb_version'])
 
 if info['cutout']['enabled']:
     edb.cutout(signal_list=info['cutout']['signal_nets'],
