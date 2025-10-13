@@ -406,10 +406,10 @@ class AEDBCCTCalculator(QMainWindow):
         self.load_config_button.clicked.connect(self.load_cct_config)
         self.reset_defaults_button = QPushButton("Reset Defaults")
         self.reset_defaults_button.clicked.connect(self.reset_cct_defaults)
+        config_buttons_layout.addStretch()
         config_buttons_layout.addWidget(self.save_config_button)
         config_buttons_layout.addWidget(self.load_config_button)
         config_buttons_layout.addWidget(self.reset_defaults_button)
-        config_buttons_layout.addStretch()
         config_panels_layout.addLayout(config_buttons_layout)
         cct_layout.addLayout(config_panels_layout)
 
