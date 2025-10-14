@@ -211,10 +211,13 @@ class AEDBCCTCalculator(QMainWindow):
         self.calculate_button_original_style = primary_style
         self.apply_button.setStyleSheet(primary_style)
         self.apply_simulation_button.setStyleSheet(primary_style)
+        self.apply_simulation_button_original_style = primary_style
         self.apply_import_button.setStyleSheet(primary_style)
+        self.apply_import_button_original_style = primary_style
 
         secondary_style = "background-color: #6c757d; color: white; border: none;"
         self.prerun_button.setStyleSheet(secondary_style)
+        self.prerun_button_original_style = secondary_style
 
     def setup_port_setup_tab(self):
         port_setup_layout = QVBoxLayout(self.port_setup_tab)
@@ -627,9 +630,13 @@ class AEDBCCTCalculator(QMainWindow):
         self.log(f"Starting CCT {mode}...")
         self.prerun_button.setEnabled(False)
         self.calculate_button.setEnabled(False)
+
         if mode == 'run':
-            self.calculate_button.setText("Running")
+            self.calculate_button.setText("Running...")
             self.calculate_button.setStyleSheet("background-color: yellow; color: black;")
+        elif mode == 'prerun':
+            self.prerun_button.setText("Running...")
+            self.prerun_button.setStyleSheet("background-color: yellow; color: black;")
 
         script_path = os.path.join(os.path.dirname(__file__), "cct_runner.py")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
@@ -664,6 +671,8 @@ class AEDBCCTCalculator(QMainWindow):
         self.calculate_button.setEnabled(True)
         self.calculate_button.setText("Calculate")
         self.calculate_button.setStyleSheet(self.calculate_button_original_style)
+        self.prerun_button.setText("Pre-run")
+        self.prerun_button.setStyleSheet(self.prerun_button_original_style)
 
     def run_prerun(self): self.run_cct_process("prerun")
     def run_calculate(self): self.run_cct_process("run")
@@ -692,7 +701,7 @@ class AEDBCCTCalculator(QMainWindow):
                 "enabled": self.enable_cutout_checkbox.isChecked(),
                 "expansion_size": self.expansion_size_input.text(),
                 "signal_nets": self.signal_nets_label.text().split(", "),
-                "reference_net": self.reference_net_label.text(),
+                "reference_net": [self.reference_net_label.text()],
             },
             "solver": "SIwave" if self.siwave_radio.isChecked() else "HFSS",
             "frequency_sweeps": sweeps,
@@ -704,19 +713,43 @@ class AEDBCCTCalculator(QMainWindow):
             self.log(f"Simulation settings saved to {file_path}")
 
             self.log("Applying simulation settings to EDB...")
+            self.apply_simulation_button.setEnabled(False)
+            self.apply_simulation_button.setText("Running...")
+            self.apply_simulation_button.setStyleSheet("background-color: yellow; color: black;")
+
             script_path = os.path.join(os.path.dirname(__file__), "set_sim.py")
             python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
             command = [python_executable, script_path, file_path]
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            stdout, stderr = process.communicate()
+            
+            self.set_sim_process = QProcess()
+            self.set_sim_process.readyReadStandardOutput.connect(self.handle_set_sim_stdout)
+            self.set_sim_process.readyReadStandardError.connect(self.handle_set_sim_stderr)
+            self.set_sim_process.finished.connect(self.set_sim_finished)
+            self.set_sim_process.start(command[0], command[1:])
 
-            if process.returncode == 0:
-                self.log("Successfully applied simulation settings.")
-                if stdout: self.log(stdout)
-            else:
-                self.log(f"Error running set_sim.py: {stderr.strip()}", "red")
         except Exception as e:
             self.log(f"Error applying simulation settings: {e}", color="red")
+            self.apply_simulation_button.setEnabled(True)
+            self.apply_simulation_button.setText("Apply Simulation")
+            self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
+
+    def handle_set_sim_stdout(self):
+        data = self.set_sim_process.readAllStandardOutput().data().decode().strip()
+        for line in data.splitlines(): self.log(line)
+
+    def handle_set_sim_stderr(self):
+        data = self.set_sim_process.readAllStandardError().data().decode().strip()
+        for line in data.splitlines(): self.log(line, color="red")
+
+    def set_sim_finished(self):
+        self.log("Set simulation process finished.")
+        self.apply_simulation_button.setEnabled(True)
+        self.apply_simulation_button.setText("Apply Simulation")
+        self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
+        if self.set_sim_process.exitCode() == 0:
+            self.log("Successfully applied simulation settings.")
+        else:
+            self.log(f"Set simulation process failed with exit code {self.set_sim_process.exitCode()}.", "red")
 
     def log(self, message, color=None):
         if color: self.log_window.setTextColor(QColor(color))
@@ -838,6 +871,11 @@ class AEDBCCTCalculator(QMainWindow):
             return
 
         self.log(f"Opening layout: {layout_path}")
+        self.apply_import_button.setEnabled(False)
+        self.apply_import_button.setText("Running...")
+        self.apply_import_button.setStyleSheet("background-color: yellow; color: black;")
+        self.current_layout_path = layout_path # Store for finished handler
+
         script_path = os.path.join(os.path.dirname(__file__), "get_edb.py")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
         edb_version = self.edb_version_input.text()
@@ -847,31 +885,47 @@ class AEDBCCTCalculator(QMainWindow):
             stackup_path = ""
 
         command = [python_executable, script_path, layout_path, edb_version, stackup_path]
-
         self.log(f"Running command: {' '.join(command)}")
-        try:
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            stdout, stderr = process.communicate()
-            
+
+        self.get_edb_process = QProcess()
+        self.get_edb_process.readyReadStandardOutput.connect(self.handle_get_edb_stdout)
+        self.get_edb_process.readyReadStandardError.connect(self.handle_get_edb_stderr)
+        self.get_edb_process.finished.connect(self.get_edb_finished)
+        self.get_edb_process.start(command[0], command[1:])
+
+    def handle_get_edb_stdout(self):
+        data = self.get_edb_process.readAllStandardOutput().data().decode().strip()
+        for line in data.splitlines(): self.log(line)
+
+    def handle_get_edb_stderr(self):
+        data = self.get_edb_process.readAllStandardError().data().decode().strip()
+        for line in data.splitlines(): self.log(line, color="red")
+
+    def get_edb_finished(self):
+        self.log("Get EDB process finished.")
+        self.apply_import_button.setEnabled(True)
+        self.apply_import_button.setText("Apply")
+        self.apply_import_button.setStyleSheet(self.apply_import_button_original_style)
+        exit_code = self.get_edb_process.exitCode()
+
+        if exit_code == 0:
+            layout_path = self.current_layout_path
             if layout_path.endswith('.aedb'):
                 json_output_path = layout_path.replace('.aedb', '.json')
             else:
                 json_output_path = os.path.splitext(layout_path)[0] + '.json'
 
-            if process.returncode == 0:
-                self.log(f"Successfully generated {os.path.basename(json_output_path)}")
-                if stdout: self.log(stdout)
-                
-                if layout_path.lower().endswith('.brd'):
-                    new_aedb_path = os.path.splitext(layout_path)[0] + '.aedb'
-                    self.layout_path_label.setText(new_aedb_path)
-                    self.log(f"Design path has been updated to: {new_aedb_path}")
+            self.log(f"Successfully generated {os.path.basename(json_output_path)}")
+            
+            if layout_path.lower().endswith('.brd'):
+                new_aedb_path = os.path.splitext(layout_path)[0] + '.aedb'
+                self.layout_path_label.setText(new_aedb_path)
+                self.log(f"Design path has been updated to: {new_aedb_path}")
 
-                self.load_pcb_data(json_output_path)
-            else:
-                self.log(f"Error running get_edb.py: {stderr.strip()}", "red")
-        except Exception as e:
-            self.log(f"Failed to execute get_edb.py: {e}", "red")
+            self.load_pcb_data(json_output_path)
+        else:
+            self.log(f"Get EDB process failed with exit code {exit_code}.", "red")
+
 
     def load_pcb_data(self, json_path):
         try:
