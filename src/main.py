@@ -833,16 +833,20 @@ class AEDBCCTCalculator(QMainWindow):
             self.stackup_path_input.setText(file_path)
 
     def run_get_edb(self, layout_path):
+        if not layout_path or layout_path == "No design loaded":
+            self.log("Please select a design first.", "red")
+            return
+
         self.log(f"Opening layout: {layout_path}")
         script_path = os.path.join(os.path.dirname(__file__), "get_edb.py")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
         edb_version = self.edb_version_input.text()
         
-        command = [python_executable, script_path, layout_path, edb_version]
-        
         stackup_path = self.stackup_path_input.text()
-        if stackup_path and os.path.exists(stackup_path):
-            command.append(stackup_path)
+        if not (stackup_path and os.path.exists(stackup_path)):
+            stackup_path = ""
+
+        command = [python_executable, script_path, layout_path, edb_version, stackup_path]
 
         self.log(f"Running command: {' '.join(command)}")
         try:
@@ -857,6 +861,12 @@ class AEDBCCTCalculator(QMainWindow):
             if process.returncode == 0:
                 self.log(f"Successfully generated {os.path.basename(json_output_path)}")
                 if stdout: self.log(stdout)
+                
+                if layout_path.lower().endswith('.brd'):
+                    new_aedb_path = os.path.splitext(layout_path)[0] + '.aedb'
+                    self.layout_path_label.setText(new_aedb_path)
+                    self.log(f"Design path has been updated to: {new_aedb_path}")
+
                 self.load_pcb_data(json_output_path)
             else:
                 self.log(f"Error running get_edb.py: {stderr.strip()}", "red")

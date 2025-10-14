@@ -3,13 +3,25 @@ from pyaedt import Edb
 import json
 from collections import defaultdict
 
-edb_path = sys.argv[1]
+design_path = sys.argv[1]
 edb_version = sys.argv[2]
+xml_path = sys.argv[3]
 
-# edb_path = 'data/Galileo_G87173_204_applied.aedb'
-json_path = edb_path.replace('.aedb', '.json')
-edb = Edb(edb_path, edbversion=edb_version)
+print(sys.argv)
+# edb_path = '../data2/Galileo_G87173_204.brd'
+# edb_version = '2024.1'
+# xml_path = ''
 
+if '.aedb' in design_path:
+    json_path = design_path.replace('.aedb', '.json')
+if '.brd' in design_path:
+    json_path = design_path.replace('.brd', '.json')
+    
+edb = Edb(design_path, edbversion=edb_version)
+
+if xml_path:
+    edb.stackup.load(xml_path)
+    edb.save()
 
 #%%
 info = {}
@@ -27,5 +39,6 @@ for differential_pair_name, differential_pair in edb.differential_pairs.items.it
     
 with open(json_path, 'w') as f:
     json.dump(info, f, indent=3)
-    
+
+
 edb.close_edb()
