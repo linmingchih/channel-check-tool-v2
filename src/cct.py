@@ -897,8 +897,8 @@ if __name__ == '__main__':
         threshold_arg = sys.argv[4] if len(sys.argv) >= 5 else None
         version_arg = sys.argv[5] if len(sys.argv) >= 6 else None
     else:
-        touchstone_path = r"D:\OneDrive - ANSYS, Inc\a-client-repositories\quanta-cct-circuit-202508\data\Sweep1_DV3.s88p"
-        metadata_path = r"D:\OneDrive - ANSYS, Inc\a-client-repositories\quanta-cct-circuit-202508\output\Sweep1_DV3_ports.json"
+        touchstone_path = r"D:\OneDrive - ANSYS, Inc\a-client-repositories\quanta-cct-circuit-202508\channel check tool 2.0\data\pcb.s40p"
+        metadata_path = r"D:\OneDrive - ANSYS, Inc\a-client-repositories\quanta-cct-circuit-202508\channel check tool 2.0\data\ports.json"
         output_csv = str(Path(metadata_path).with_name(f"{Path(metadata_path).stem}_cct.csv"))
         threshold_arg = None
         version_arg = None
