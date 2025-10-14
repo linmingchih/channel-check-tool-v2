@@ -12,8 +12,8 @@ edb_path = info['aedb_path'].replace('.aedb', '_applied.aedb')
 edb = Edb(edb_path, version=info['edb_version'])
 
 if info['cutout']['enabled']:
-    edb.cutout(signal_list=info['cutout']['signal_nets'],
-               reference_list=info['cutout']['reference_net'],
+    edb.cutout(signal_nets=info['cutout']['signal_nets'],
+               reference_nets=info['cutout']['reference_net'],
                expansion_size=float(info['cutout']['expansion_size'])
                )
     
