@@ -73,23 +73,12 @@ class AEDBCCTCalculator(QMainWindow):
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
 
-        top_panel_layout = QHBoxLayout()
-        self.edb_version_input = QLineEdit()
-        self.edb_version_input.setFixedWidth(60)
-        self.open_aedb_button = QPushButton("Open .aedb?")
-        self.open_aedb_button.clicked.connect(self.open_aedb)
-        self.aedb_path_label = QLabel("No design loaded")
-        top_panel_layout.addWidget(QLabel("EDB version:"))
-        top_panel_layout.addWidget(self.edb_version_input)
-        top_panel_layout.addWidget(self.open_aedb_button)
-        top_panel_layout.addWidget(self.aedb_path_label)
-        top_panel_layout.addStretch()
-        main_layout.addLayout(top_panel_layout)
-
         self.tabs = QTabWidget()
+        self.import_tab = QWidget()
         self.port_setup_tab = QWidget()
         self.simulation_tab = QWidget()
         self.cct_tab = QWidget()
+        self.tabs.addTab(self.import_tab, "Import")
         self.tabs.addTab(self.port_setup_tab, "Port Setup")
         self.tabs.addTab(self.simulation_tab, "Simulation")
         self.tabs.addTab(self.cct_tab, "CCT")
@@ -104,12 +93,61 @@ class AEDBCCTCalculator(QMainWindow):
         log_layout.addWidget(self.log_window)
         main_layout.addWidget(log_group)
 
+        self.setup_import_tab()
         self.setup_port_setup_tab()
         self.setup_simulation_tab()
         self.setup_cct_tab()
         self.apply_styles()
         self.load_config()
 
+    def setup_import_tab(self):
+        import_layout = QVBoxLayout(self.import_tab)
+        import_group = QGroupBox("Layout Import")
+        import_group_layout = QGridLayout(import_group)
+
+        # Row 1: Layout type selection
+        self.brd_radio = QRadioButton(".brd")
+        self.aedb_radio = QRadioButton(".aedb")
+        self.brd_radio.setChecked(True)
+        self.brd_radio.toggled.connect(self.on_layout_type_changed)
+        self.aedb_radio.toggled.connect(self.on_layout_type_changed)
+        import_group_layout.addWidget(self.brd_radio, 0, 0)
+        import_group_layout.addWidget(self.aedb_radio, 0, 1)
+
+        # Row 2: Path selection
+        self.open_layout_button = QPushButton("Open...")
+        self.open_layout_button.clicked.connect(self.open_layout)
+        self.layout_path_label = QLabel("No design loaded")
+        import_group_layout.addWidget(QLabel("Design:"), 1, 0)
+        import_group_layout.addWidget(self.layout_path_label, 1, 1)
+        import_group_layout.addWidget(self.open_layout_button, 1, 2)
+
+        # Row 3: Stackup selection
+        self.stackup_path_input = QLineEdit()
+        self.browse_stackup_button = QPushButton("Browse...")
+        self.browse_stackup_button.clicked.connect(self.browse_stackup)
+        import_group_layout.addWidget(QLabel("Stackup (.xml):"), 2, 0)
+        import_group_layout.addWidget(self.stackup_path_input, 2, 1)
+        import_group_layout.addWidget(self.browse_stackup_button, 2, 2)
+        
+        # EDB version input
+        import_group_layout.addWidget(QLabel("EDB version:"), 3, 0)
+        self.edb_version_input = QLineEdit()
+        self.edb_version_input.setFixedWidth(60)
+        import_group_layout.addWidget(self.edb_version_input, 3, 1)
+
+        import_layout.addWidget(import_group)
+
+        self.apply_import_button = QPushButton("Apply")
+        self.apply_import_button.clicked.connect(lambda: self.run_get_edb(self.layout_path_label.text()))
+        import_layout.addWidget(self.apply_import_button, alignment=Qt.AlignRight)
+
+        import_layout.addStretch()
+
+    def on_layout_type_changed(self):
+        if self.sender().isChecked():
+            self.layout_path_label.setText("No design loaded")
+            self.stackup_path_input.clear()
 
     def closeEvent(self, event):
         self.save_config()
@@ -173,6 +211,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.calculate_button_original_style = primary_style
         self.apply_button.setStyleSheet(primary_style)
         self.apply_simulation_button.setStyleSheet(primary_style)
+        self.apply_import_button.setStyleSheet(primary_style)
 
         secondary_style = "background-color: #6c757d; color: white; border: none;"
         self.prerun_button.setStyleSheet(secondary_style)
@@ -630,7 +669,7 @@ class AEDBCCTCalculator(QMainWindow):
     def run_calculate(self): self.run_cct_process("run")
 
     def apply_simulation_settings(self):
-        aedb_path = self.aedb_path_label.text()
+        aedb_path = self.layout_path_label.text()
         if not os.path.isdir(aedb_path):
             self.log("Please open an .aedb project first.", "red")
             return
@@ -709,7 +748,7 @@ class AEDBCCTCalculator(QMainWindow):
         if not self.pcb_data:
             self.log("No PCB data loaded.", "red")
             return
-        aedb_path = self.aedb_path_label.text()
+        aedb_path = self.layout_path_label.text()
         if not os.path.isdir(aedb_path):
             self.log("Invalid AEDB path.", "red")
             return
@@ -778,23 +817,43 @@ class AEDBCCTCalculator(QMainWindow):
         except Exception as e:
             self.log(f"Error during apply: {e}", "red")
 
-    def open_aedb(self):
-        dir_path = QFileDialog.getExistingDirectory(self, "Select .aedb directory", ".", QFileDialog.ShowDirsOnly)
-        if dir_path and dir_path.endswith(".aedb"):
-            self.aedb_path_label.setText(dir_path)
-            self.run_get_edb(dir_path)
+    def open_layout(self):
+        path = ""
+        if self.brd_radio.isChecked():
+            path, _ = QFileDialog.getOpenFileName(self, "Select .brd file", "", "BRD files (*.brd)")
+        elif self.aedb_radio.isChecked():
+            path = QFileDialog.getExistingDirectory(self, "Select .aedb directory", ".", QFileDialog.ShowDirsOnly)
 
-    def run_get_edb(self, aedb_path):
-        self.log(f"Opening .aedb: {aedb_path}")
+        if path:
+            self.layout_path_label.setText(path)
+
+    def browse_stackup(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Stackup File", "", "XML files (*.xml)")
+        if file_path:
+            self.stackup_path_input.setText(file_path)
+
+    def run_get_edb(self, layout_path):
+        self.log(f"Opening layout: {layout_path}")
         script_path = os.path.join(os.path.dirname(__file__), "get_edb.py")
         python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
         edb_version = self.edb_version_input.text()
-        command = [python_executable, script_path, aedb_path, edb_version]
+        
+        command = [python_executable, script_path, layout_path, edb_version]
+        
+        stackup_path = self.stackup_path_input.text()
+        if stackup_path and os.path.exists(stackup_path):
+            command.append(stackup_path)
+
         self.log(f"Running command: {' '.join(command)}")
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             stdout, stderr = process.communicate()
-            json_output_path = aedb_path.replace('.aedb', '.json')
+            
+            if layout_path.endswith('.aedb'):
+                json_output_path = layout_path.replace('.aedb', '.json')
+            else:
+                json_output_path = os.path.splitext(layout_path)[0] + '.json'
+
             if process.returncode == 0:
                 self.log(f"Successfully generated {os.path.basename(json_output_path)}")
                 if stdout: self.log(stdout)
