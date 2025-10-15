@@ -98,3 +98,85 @@ Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
 [info] Project:Project449, Design:Circuit Design_RYS, (info): Processing circuit for new analysis. (02:55:06 PM  Oct 14, 2025)
 [info] Project:Project449, Design:Circuit Design_RYS, (info): Starting analysis type TRAN. (02:55:07 PM  Oct 14, 2025)
 [info] Project:Project449, Design:Circuit Design_RYS, (info): Simulation succeeded. Total simulator time: 0:00:01 (02:55:08 PM  Oct 14, 2025)
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: C:\Program Files\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 8:09:22 PM  Oct 15, 2025
+Running as user : ANSYS\mlin
+Temp directory: C:\Users\mlin\AppData\Local\Temp
+Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: C:\Program Files\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 8:10:09 PM  Oct 15, 2025
+Running as user : ANSYS\mlin
+Temp directory: C:\Users\mlin\AppData\Local\Temp
+Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: C:\Program Files\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 8:12:20 PM  Oct 15, 2025
+Running as user : ANSYS\mlin
+Temp directory: C:\Users\mlin\AppData\Local\Temp
+Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 50795. 
+        [info] OpenGL Version: 4.6.0 - Build 32.0.101.6881
+        [info] EDB folder D:/OneDrive - ANSYS, Inc/a-client-repositories/quanta-cct-circuit-202508/channel check tool 2.0/data2/Galileo_G87173_204_applied.aedb has been imported to project Galileo_G87173_204_applied
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Aedt Objects correctly read
+        [info] Enabling Export On Completion
+        [info] Project Galileo_G87173_204_applied Saved correctly
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 25.0s
+-- Message Window --
+Stopping Batch Run: 8:13:10 PM  Oct 15, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: C:\Program Files\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 8:15:19 PM  Oct 15, 2025
+Running as user : ANSYS\mlin
+Temp directory: C:\Users\mlin\AppData\Local\Temp
+Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 55865. 
+        [info] OpenGL Version: 4.6.0 - Build 32.0.101.6881
+        [info] EDB folder D:/OneDrive - ANSYS, Inc/a-client-repositories/quanta-cct-circuit-202508/channel check tool 2.0/data2/Galileo_G87173_204_applied.aedb has been imported to project Galileo_G87173_204_applied
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Aedt Objects correctly read
+        [info] Enabling Export On Completion
+        [info] Project Galileo_G87173_204_applied Saved correctly
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 24.0s
+-- Message Window --
+Stopping Batch Run: 8:16:00 PM  Oct 15, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: C:\Program Files\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 8:24:00 PM  Oct 15, 2025
+Running as user : ANSYS\mlin
+Temp directory: C:\Users\mlin\AppData\Local\Temp
+Project directory: D:\OneDrive - ANSYS, Inc\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 54799. 
+        [info] OpenGL Version: 4.6.0 - Build 32.0.101.6881
+        [info] EDB folder D:/OneDrive - ANSYS, Inc/a-client-repositories/quanta-cct-circuit-202508/channel check tool 2.0/data2/Galileo_G87173_204_applied.aedb has been imported to project Galileo_G87173_204_applied
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Active Design set to 0;Galileo_G87173_204
+        [info] Aedt Objects correctly read
+        [info] Enabling Export On Completion
+        [info] Project Galileo_G87173_204_applied Saved correctly
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 24.0s
+-- Message Window --
+Stopping Batch Run: 8:24:46 PM  Oct 15, 2025

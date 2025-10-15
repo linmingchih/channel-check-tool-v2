@@ -315,7 +315,7 @@ class MainController(AEDBCCTCalculator):
             return
 
         output_dir = os.path.dirname(aedb_path)
-        file_path = os.path.join(output_dir, "simulation.json")
+        self.simulation_config_path = os.path.join(output_dir, "simulation.json")
 
         sweeps = []
         for row in range(self.sweeps_table.rowCount()):
@@ -339,9 +339,9 @@ class MainController(AEDBCCTCalculator):
         }
 
         try:
-            with open(file_path, "w") as f:
+            with open(self.simulation_config_path, "w") as f:
                 json.dump(settings, f, indent=2)
-            self.log(f"Simulation settings saved to {file_path}")
+            self.log(f"Simulation settings saved to {self.simulation_config_path}")
 
             self.log("Applying simulation settings to EDB...")
             self.apply_simulation_button.setEnabled(False)
@@ -350,7 +350,7 @@ class MainController(AEDBCCTCalculator):
 
             script_path = os.path.join(os.path.dirname(__file__), "set_sim.py")
             python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
-            command = [python_executable, script_path, file_path]
+            command = [python_executable, script_path, self.simulation_config_path]
             
             self.set_sim_process = QProcess()
             self.set_sim_process.readyReadStandardOutput.connect(self.handle_set_sim_stdout)
@@ -374,13 +374,64 @@ class MainController(AEDBCCTCalculator):
 
     def set_sim_finished(self):
         self.log("Set simulation process finished.")
+        if self.set_sim_process.exitCode() == 0:
+            self.log("Successfully applied simulation settings. Now running simulation...")
+            self.run_simulation_script()
+        else:
+            self.log(f"Set simulation process failed with exit code {self.set_sim_process.exitCode()}.", "red")
+            self.apply_simulation_button.setEnabled(True)
+            self.apply_simulation_button.setText("Apply Simulation")
+            self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
+
+    def run_simulation_script(self):
+        self.log("Starting simulation...")
+        script_path = os.path.join(os.path.dirname(__file__), "run_sim.py")
+        python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
+        command = [python_executable, script_path, self.simulation_config_path]
+
+        self.run_sim_process = QProcess()
+        self.run_sim_process.readyReadStandardOutput.connect(self.handle_run_sim_stdout)
+        self.run_sim_process.readyReadStandardError.connect(self.handle_run_sim_stderr)
+        self.run_sim_process.finished.connect(self.run_sim_finished)
+        self.run_sim_process.start(command[0], command[1:])
+
+    def handle_run_sim_stdout(self):
+        data = self.run_sim_process.readAllStandardOutput().data().decode().strip()
+        for line in data.splitlines(): self.log(line)
+
+    def handle_run_sim_stderr(self):
+        data = self.run_sim_process.readAllStandardError().data().decode().strip()
+        for line in data.splitlines(): self.log(line, color="red")
+
+    def run_sim_finished(self):
+        self.log("Simulation process finished.")
         self.apply_simulation_button.setEnabled(True)
         self.apply_simulation_button.setText("Apply Simulation")
         self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
-        if self.set_sim_process.exitCode() == 0:
-            self.log("Successfully applied simulation settings.")
+        if self.run_sim_process.exitCode() == 0:
+            self.log("Successfully ran simulation.")
+            output = self.run_sim_process.readAllStandardOutput().data().decode().strip()
+            touchstone_path = ""
+            # Use regex to find the .s*p file path
+            match = re.search(r".*?\.s\d+p", output, re.IGNORECASE)
+            if match:
+                touchstone_path = match.group(0).strip()
+
+            if touchstone_path and os.path.exists(touchstone_path):
+                self.touchstone_path_input.setText(touchstone_path)
+                self.log(f"Updated Touchstone path to: {touchstone_path}")
+
+                aedb_path = self.layout_path_label.text()
+                ports_json_path = os.path.join(os.path.dirname(aedb_path), "ports.json")
+                if os.path.exists(ports_json_path):
+                    self.port_metadata_path_input.setText(ports_json_path)
+                    self.log(f"Updated Port Metadata path to: {ports_json_path}")
+                else:
+                    self.log(f"Could not find ports.json at: {ports_json_path}", "orange")
+            else:
+                self.log("Could not find Touchstone file path in simulation output.", "orange")
         else:
-            self.log(f"Set simulation process failed with exit code {self.set_sim_process.exitCode()}.", "red")
+            self.log(f"Run simulation process failed with exit code {self.run_sim_process.exitCode()}.", "red")
 
     def browse_touchstone(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Touchstone File", "", "Touchstone files (*.s*p)")
