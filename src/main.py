@@ -210,11 +210,11 @@ class MainController(AEDBCCTCalculator):
         self.get_edb_process.start(command[0], command[1:])
 
     def handle_get_edb_stdout(self):
-        data = self.get_edb_process.readAllStandardOutput().data().decode().strip()
+        data = self.get_edb_process.readAllStandardOutput().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line)
 
     def handle_get_edb_stderr(self):
-        data = self.get_edb_process.readAllStandardError().data().decode().strip()
+        data = self.get_edb_process.readAllStandardError().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line, color="red")
 
     def get_edb_finished(self):
@@ -365,11 +365,11 @@ class MainController(AEDBCCTCalculator):
             self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
 
     def handle_set_sim_stdout(self):
-        data = self.set_sim_process.readAllStandardOutput().data().decode().strip()
+        data = self.set_sim_process.readAllStandardOutput().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line)
 
     def handle_set_sim_stderr(self):
-        data = self.set_sim_process.readAllStandardError().data().decode().strip()
+        data = self.set_sim_process.readAllStandardError().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line, color="red")
 
     def set_sim_finished(self):
@@ -396,11 +396,11 @@ class MainController(AEDBCCTCalculator):
         self.run_sim_process.start(command[0], command[1:])
 
     def handle_run_sim_stdout(self):
-        data = self.run_sim_process.readAllStandardOutput().data().decode().strip()
+        data = self.run_sim_process.readAllStandardOutput().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line)
 
     def handle_run_sim_stderr(self):
-        data = self.run_sim_process.readAllStandardError().data().decode().strip()
+        data = self.run_sim_process.readAllStandardError().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line, color="red")
 
     def run_sim_finished(self):
@@ -606,6 +606,7 @@ class MainController(AEDBCCTCalculator):
         ]
         if mode == 'run':
             output_path = os.path.join(os.path.dirname(metadata_path), "cct_results.csv")
+            self.cct_output_path = output_path
             command.extend(["--output-path", output_path])
 
         self.process = QProcess()
@@ -615,11 +616,11 @@ class MainController(AEDBCCTCalculator):
         self.process.start(command[0], command[1:])
 
     def handle_stdout(self):
-        data = self.process.readAllStandardOutput().data().decode().strip()
+        data = self.process.readAllStandardOutput().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line)
 
     def handle_stderr(self):
-        data = self.process.readAllStandardError().data().decode().strip()
+        data = self.process.readAllStandardError().data().decode(errors='ignore').strip()
         for line in data.splitlines(): self.log(line, color="red")
 
     def cct_finished(self):
@@ -630,9 +631,15 @@ class MainController(AEDBCCTCalculator):
         self.calculate_button.setStyleSheet(self.calculate_button_original_style)
         self.prerun_button.setText("Pre-run")
         self.prerun_button.setStyleSheet(self.prerun_button_original_style)
+        if self.cct_mode == "run":
+            self.load_result_csv(self.cct_output_path)
 
-    def run_prerun(self): self.run_cct_process("prerun")
-    def run_calculate(self): self.run_cct_process("run")
+    def run_prerun(self): 
+        self.cct_mode = "prerun"
+        self.run_cct_process("prerun")
+    def run_calculate(self): 
+        self.cct_mode = "run"
+        self.run_cct_process("run")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
