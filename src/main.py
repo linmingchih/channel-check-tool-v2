@@ -410,26 +410,32 @@ class MainController(AEDBCCTCalculator):
         self.apply_simulation_button.setStyleSheet(self.apply_simulation_button_original_style)
         if self.run_sim_process.exitCode() == 0:
             self.log("Successfully ran simulation.")
-            output = self.run_sim_process.readAllStandardOutput().data().decode().strip()
-            touchstone_path = ""
-            # Use regex to find the .s*p file path
-            match = re.search(r".*?\.s\d+p", output, re.IGNORECASE)
-            if match:
-                touchstone_path = match.group(0).strip()
+            
+            result_json_path = self.simulation_config_path.replace('simulation.json', 'result.json')
+            
+            if os.path.exists(result_json_path):
+                try:
+                    with open(result_json_path, "r") as f:
+                        result_data = json.load(f)
+                    touchstone_path = result_data.get("touchstone_path")
 
-            if touchstone_path and os.path.exists(touchstone_path):
-                self.touchstone_path_input.setText(touchstone_path)
-                self.log(f"Updated Touchstone path to: {touchstone_path}")
+                    if touchstone_path and os.path.exists(touchstone_path):
+                        self.touchstone_path_input.setText(touchstone_path)
+                        self.log(f"Updated Touchstone path to: {touchstone_path}")
 
-                aedb_path = self.layout_path_label.text()
-                ports_json_path = os.path.join(os.path.dirname(aedb_path), "ports.json")
-                if os.path.exists(ports_json_path):
-                    self.port_metadata_path_input.setText(ports_json_path)
-                    self.log(f"Updated Port Metadata path to: {ports_json_path}")
-                else:
-                    self.log(f"Could not find ports.json at: {ports_json_path}", "orange")
+                        aedb_path = self.layout_path_label.text()
+                        ports_json_path = os.path.join(os.path.dirname(aedb_path), "ports.json")
+                        if os.path.exists(ports_json_path):
+                            self.port_metadata_path_input.setText(ports_json_path)
+                            self.log(f"Updated Port Metadata path to: {ports_json_path}")
+                        else:
+                            self.log(f"Could not find ports.json at: {ports_json_path}", "orange")
+                    else:
+                        self.log("Touchstone path not found or invalid in result.json.", "orange")
+                except (IOError, json.JSONDecodeError) as e:
+                    self.log(f"Error reading result.json: {e}", "red")
             else:
-                self.log("Could not find Touchstone file path in simulation output.", "orange")
+                self.log(f"Could not find result.json.", "orange")
         else:
             self.log(f"Run simulation process failed with exit code {self.run_sim_process.exitCode()}.", "red")
 

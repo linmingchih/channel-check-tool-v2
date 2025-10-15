@@ -1,4 +1,4 @@
-import re
+import re, os
 import sys
 import json
 from pathlib import Path
@@ -26,7 +26,20 @@ matched_files = [
     p.resolve() for p in root.rglob("*")
     if p.is_file() and pattern.search(p.name)
 ]
-print(matched_files[0])
 
 hfss.release_desktop()
+
+if matched_files:
+    touchstone_path = str(matched_files[0])
+    print(touchstone_path)
+    
+    # Save the result to a json file
+    output_dir = Path(json_path).parent
+    result_json_path = output_dir / "result.json"
+    with open(result_json_path, "w") as f:
+        json.dump({"touchstone_path": touchstone_path}, f, indent=2)
+else:
+    print("Error: No Touchstone file found.")
+    sys.exit(1)
+
 
