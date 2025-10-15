@@ -103,6 +103,7 @@ class AEDBCCTCalculator(QMainWindow):
 
     def setup_result_tab(self):
         result_layout = QVBoxLayout(self.result_tab)
+        result_layout.setContentsMargins(0, 0, 0, 0)
         self.result_table = QTableWidget()
         result_layout.addWidget(self.result_table)
 
@@ -128,7 +129,7 @@ class AEDBCCTCalculator(QMainWindow):
                     self.result_table.insertRow(row)
                     for i, data in enumerate(row_data):
                         self.result_table.setItem(row, i, QTableWidgetItem(data))
-            self.result_table.resizeColumnsToContents()
+            self.result_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception as e:
             self.log_window.append(f"Error loading result CSV: {e}")
 
@@ -207,6 +208,7 @@ class AEDBCCTCalculator(QMainWindow):
         self.calculate_button.setStyleSheet(primary_style)
         self.calculate_button_original_style = primary_style
         self.apply_button.setStyleSheet(primary_style)
+        self.apply_button_original_style = primary_style
         self.apply_simulation_button.setStyleSheet(primary_style)
         self.apply_simulation_button_original_style = primary_style
         self.apply_import_button.setStyleSheet(primary_style)
@@ -442,11 +444,11 @@ class AEDBCCTCalculator(QMainWindow):
         self.port_table.setColumnCount(5)
         self.port_table.setHorizontalHeaderLabels(["", "TX Port", "RX Port", "Type", "Pair"])
         header = self.port_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
         self.port_table.verticalHeader().setVisible(False)
         self.port_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.port_table.setSelectionBehavior(QAbstractItemView.SelectRows)

@@ -147,24 +147,52 @@ class MainController(AEDBCCTCalculator):
         
         self.signal_nets_label.setText(", ".join(sorted(signal_nets)))
         self.reference_net_label.setText(data["reference_net"])
+        self.current_aedb_path = aedb_path
 
         try:
             with open(output_path, "w") as f: json.dump(data, f, indent=2)
             self.log(f"Successfully saved to {output_path}. Now applying to EDB...")
+            
+            self.apply_button.setEnabled(False)
+            self.apply_button.setText("Running...")
+            self.apply_button.setStyleSheet("background-color: yellow; color: black;")
+
             script_path = os.path.join(os.path.dirname(__file__), "set_edb.py")
             python_executable = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".venv", "Scripts", "python.exe")
             edb_version = self.edb_version_input.text()
             command = [python_executable, script_path, output_path, edb_version]
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            stdout, stderr = process.communicate()
-            if process.returncode == 0:
-                new_aedb_path = aedb_path.replace('.aedb', '_applied.aedb')
-                self.log(f"Successfully created {new_aedb_path}")
-                if stdout: self.log(stdout)
-            else:
-                self.log(f"Error running set_edb.py: {stderr.strip()}", "red")
+            
+            self.set_edb_process = QProcess()
+            self.set_edb_process.readyReadStandardOutput.connect(self.handle_set_edb_stdout)
+            self.set_edb_process.readyReadStandardError.connect(self.handle_set_edb_stderr)
+            self.set_edb_process.finished.connect(self.set_edb_finished)
+            self.set_edb_process.start(command[0], command[1:])
+
         except Exception as e:
             self.log(f"Error during apply: {e}", "red")
+            self.apply_button.setEnabled(True)
+            self.apply_button.setText("Apply")
+            self.apply_button.setStyleSheet(self.apply_button_original_style)
+
+    def handle_set_edb_stdout(self):
+        data = self.set_edb_process.readAllStandardOutput().data().decode(errors='ignore').strip()
+        for line in data.splitlines(): self.log(line)
+
+    def handle_set_edb_stderr(self):
+        data = self.set_edb_process.readAllStandardError().data().decode(errors='ignore').strip()
+        for line in data.splitlines(): self.log(line, color="red")
+
+    def set_edb_finished(self):
+        self.log("Set EDB process finished.")
+        self.apply_button.setEnabled(True)
+        self.apply_button.setText("Apply")
+        self.apply_button.setStyleSheet(self.apply_button_original_style)
+        
+        if self.set_edb_process.exitCode() == 0:
+            new_aedb_path = self.current_aedb_path.replace('.aedb', '_applied.aedb')
+            self.log(f"Successfully created {new_aedb_path}")
+        else:
+            self.log(f"Set EDB process failed with exit code {self.set_edb_process.exitCode()}.", "red")
 
     def open_layout(self):
         path = ""
