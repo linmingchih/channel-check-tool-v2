@@ -311,7 +311,7 @@ class AEDBCCTCalculator(QMainWindow):
         
         sweep_buttons_layout = QHBoxLayout()
         add_sweep_button = QPushButton("Add Sweep")
-        add_sweep_button.clicked.connect(self.add_sweep)
+        add_sweep_button.clicked.connect(lambda: self.add_sweep())
         remove_sweep_button = QPushButton("Remove Selected")
         remove_sweep_button.clicked.connect(self.remove_selected_sweep)
         sweep_buttons_layout.addWidget(add_sweep_button)
@@ -320,7 +320,7 @@ class AEDBCCTCalculator(QMainWindow):
         sweeps_layout.addLayout(sweep_buttons_layout)
         simulation_layout.addWidget(sweeps_group)
 
-        self.apply_simulation_button = QPushButton("Apply Simulation")
+        self.apply_simulation_button = QPushButton("Apply")
         simulation_layout.addWidget(self.apply_simulation_button, alignment=Qt.AlignRight)
         simulation_layout.addStretch()
 
