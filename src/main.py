@@ -362,7 +362,8 @@ class MainController(AEDBCCTCalculator):
                 "signal_nets": self.signal_nets_label.text().split(", "),
                 "reference_net": [self.reference_net_label.text()],
             },
-            "solver": "SIwave" if self.siwave_radio.isChecked() else "HFSS",
+            "solver": "SIwave",
+            "solver_version": self.siwave_version_input.text(),
             "frequency_sweeps": sweeps,
         }
 

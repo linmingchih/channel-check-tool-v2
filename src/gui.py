@@ -290,11 +290,12 @@ class AEDBCCTCalculator(QMainWindow):
 
         solver_group = QGroupBox("Solver")
         solver_layout = QHBoxLayout(solver_group)
-        self.siwave_radio = QRadioButton("SIwave")
-        self.hfss_radio = QRadioButton("HFSS")
-        self.siwave_radio.setChecked(True)
-        solver_layout.addWidget(self.siwave_radio)
-        solver_layout.addWidget(self.hfss_radio)
+        self.siwave_label = QLabel("SIwave")
+        self.siwave_version_input = QLineEdit("2025.1")
+        self.siwave_version_input.setFixedWidth(60)
+        solver_layout.addWidget(self.siwave_label)
+        solver_layout.addWidget(self.siwave_version_input)
+        solver_layout.addStretch()
         simulation_layout.addWidget(solver_group)
 
         sweeps_group = QGroupBox("Frequency Sweeps")

@@ -12,7 +12,7 @@ with open(json_path) as f:
 edb_path = info['aedb_path'].replace('.aedb', '_applied.aedb')
 from pyaedt import Hfss3dLayout
 
-hfss = Hfss3dLayout(edb_path, version='2025.1', non_graphical=True)
+hfss = Hfss3dLayout(edb_path, version=info['solver_version'], non_graphical=True)
 
 hfss.export_touchstone_on_completion()
 hfss.analyze()
